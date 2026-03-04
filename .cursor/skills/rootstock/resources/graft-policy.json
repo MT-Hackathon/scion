@@ -8,8 +8,7 @@
         "agents/**",
         "hooks.json",
         "hooks/**",
-        "rules/001-foundational/**",
-        "rules/0[1-9][0-9]-*/**",
+        "rules/0[0-9][0-9]-*/**",
         "rules/1[0-9][0-9]-*/**",
         "commands/**",
         "mcp/**",
@@ -29,7 +28,7 @@
     },
     "protect": {
       "description": "Never overwrite. Created on Day 0 if missing, then untouched.",
-      "patterns": ["rules/001-*/**", "rules/[2-9][0-9][0-9]-*/**"]
+      "patterns": ["rules/[2-9][0-9][0-9]-*/**"]
     },
     "ignore": {
       "description": "Never touch. Not part of distribution.",
