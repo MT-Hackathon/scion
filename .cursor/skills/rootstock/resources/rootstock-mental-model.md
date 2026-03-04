@@ -144,34 +144,43 @@ exclusion rather than exposure.
 ## 7. Architecture and Data Flow
 Rootstock organizes knowledge along two axes: **Reachability** (When does it
 fire?) and **Portability** (Where does it apply?). The flow of knowledge follows
-a hub-and-spoke model where the Rootstock repository acts as the central hub.
-The runtime core is now Rust: both the desktop app (`src-tauri/`) and CLI
-(`crates/graft-cli/`) consume the shared `graft-core` crate
-(`crates/graft-core/`). The Python implementation in `app/backend/` remains a
-reference path, not the primary runtime.
+a hub-and-spoke model where the **scion** repository acts as the central hub.
+
+**The scion repo** (`git@gitlab.com:cdo-office/scion.git`, public mirror at `github.com/MT-Hackathon/scion`) is a dedicated knowledge-only repository. It contains only `.cursor/` content — rules, skills, agents, hooks — plus `graft-policy.json` and `.rootstockignore`. No application code. The rootstock app repo connects to scion as a spoke project, the same as any other project. `main` is the canonical golden image; contributor branches (`contributor/{contributor}/{project_id}`) hold unreviewed submissions.
+
+The runtime core is Rust: both the desktop app (`src-tauri/`) and CLI (`crates/graft-cli/`) consume the shared `graft-core` crate (`crates/graft-core/`).
 
 ```mermaid
 graph TD
-    subgraph "Local Project"
-        P1["Project Context (Briefings)"]
-        P2["Local Rules (200+)"]
-        P3["Session Artifacts (998/999)"]
-    end
-
-    subgraph "The Canonical Hub (Rootstock)"
+    subgraph scion_hub [Scion Hub]
         direction TB
         F1["Foundational Rules (000-199)"]
-        S1["Portable Skills (scripts)"]
+        S1["Portable Skills"]
         A1["Agent Personas"]
+        P0["graft-policy.json"]
     end
 
-    subgraph "External learning"
-        L1["New Patterns"]
+    subgraph spoke_rootstock [Rootstock App]
+        R1["App code (Rust/SvelteKit)"]
+        R2[".cursor/ (synced from scion)"]
     end
 
-    L1 -- "graft push" --> F1
-    F1 -- "graft pull" --> P1
-    F1 -- "graft pull" --> P2
+    subgraph spoke_project [Any Connected Project]
+        P1["Project Context (998/999)"]
+        P2["Local Rules (200+)"]
+        P3[".cursor/ (synced from scion)"]
+    end
+
+    subgraph contributor [Contributor Branches]
+        C1["contributor/adam_1/rootstock"]
+        C2["contributor/adam_1/procurement"]
+    end
+
+    spoke_rootstock -- "graft push" --> contributor
+    spoke_project -- "graft push" --> contributor
+    scion_hub -- "graft pull" --> spoke_rootstock
+    scion_hub -- "graft pull" --> spoke_project
+    contributor -- "curation service (Phase B)" --> scion_hub
 ```
 
 ## 8. System States and Drift
@@ -251,12 +260,12 @@ organizes it into clear functional zones:
 
 ## 12. Glossary of Terms
 - **Canonical**: The authoritative, curated state of the knowledge base.
-- **Graft**: The mechanism of distribution from the hub to the spokes.
+- **Scion**: The canonical knowledge repository. In arboriculture, the scion is the productive cutting — selected for quality, grafted onto rootstock to grow. In this system, the scion repo carries the knowledge (rules, skills, agents) that determines how the AI behaves. It is a separate repo from the rootstock application code.
+- **Rootstock**: The platform — the application, the sync engine, the desktop app. Not the knowledge itself.
+- **Graft**: The mechanism of distribution from the hub to the spokes. Also the CLI and sync library name.
 - **Drift**: The delta between a local environment and the canonical state.
-- **Curation Rubric**: The set of quality standards used to evaluate new
-  knowledge.
-- **Token Budget**: The limit on context size that dictates how much knowledge
-  can be active at once.
+- **Curation Rubric**: The set of quality standards used to evaluate new knowledge.
+- **Token Budget**: The limit on context size that dictates how much knowledge can be active at once.
 - **Dyad**: The collaborative pair of one human developer and one AI instance.
-- **Inbound Drift**: Changes available in canonical that are not yet local.
-- **Outbound Drift**: Local changes that have not yet been pushed to canonical.
+- **Inbound Drift**: Changes available in canonical (scion `main`) that are not yet local.
+- **Outbound Drift**: Local changes that have not yet been pushed to a scion contributor branch.
