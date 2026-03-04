@@ -1,0 +1,74 @@
+{
+  "schema_version": 2,
+  "file_policies": {
+    "overwrite": {
+      "description": "Canonical wins. Full file replacement.",
+      "patterns": [
+        "skills/**",
+        "agents/**",
+        "hooks.json",
+        "hooks/**",
+        "rules/001-foundational/**",
+        "rules/0[1-9][0-9]-*/**",
+        "rules/1[0-9][0-9]-*/**",
+        "commands/**",
+        "mcp/**",
+        "BUGBOT.md"
+      ]
+    },
+    "template": {
+      "description": "Canonical file contains {{PLACEHOLDER}} patterns. Render via str.replace() then overwrite.",
+      "files": []
+    },
+    "content_filter": {
+      "description": "Frontmatter from canonical; content body preserved locally. Mirror of push.py logic.",
+      "files": [
+        "rules/998-temporal-self/RULE.mdc",
+        "rules/999-codebase-briefing/RULE.mdc"
+      ]
+    },
+    "protect": {
+      "description": "Never overwrite. Created on Day 0 if missing, then untouched.",
+      "patterns": ["rules/001-*/**", "rules/[2-9][0-9][0-9]-*/**"]
+    },
+    "ignore": {
+      "description": "Never touch. Not part of distribution.",
+      "files": [".env", "worktrees.json"]
+    }
+  },
+  "surface_projection": {
+    "rules/**": [
+      "cursor",
+      "claude"
+    ],
+    "skills/**": [
+      "cursor",
+      "claude"
+    ],
+    "agents/**": [
+      "cursor",
+      "claude"
+    ],
+    "commands/**": [
+      "cursor",
+      "claude"
+    ],
+    "hooks/**": [
+      "cursor"
+    ],
+    "hooks.json": [
+      "cursor"
+    ],
+    "mcp/**": [
+      "cursor"
+    ],
+    "BUGBOT.md": [
+      "cursor"
+    ]
+  },
+  "rule_ranges": {
+    "universal": "000-099",
+    "language_specific": "100-199",
+    "project_specific": "200-999"
+  }
+}

@@ -1,0 +1,361 @@
+#!/usr/bin/env bash
+# ARCHIVED: SvelteKit-specific feature issues - not applicable to Angular
+# This script created GitHub issues for Universal-API SvelteKit settings features.
+# Kept for reference but should not be executed for procurement-web.
+set -euo pipefail
+
+repo="MT-Hackathon/Universal-API"
+api="https://api.github.com/repos/${repo}/issues"
+token="${GITHUB_PERSONAL_ACCESS_TOKEN:?GITHUB_PERSONAL_ACCESS_TOKEN is required}"
+labels='["frontend","feature"]'
+
+post_issue() {
+  local title="$1"
+  local body="$2"
+  echo "Creating: $title"
+  jq -n --arg title "$title" --arg body "$body" --argjson labels "$labels" '{title:$title, body:$body, labels:$labels}' \
+    | curl -sS -X POST \
+      -H "Authorization: token $token" \
+      -H "Accept: application/vnd.github+json" \
+      "$api" -d @-
+  echo
+}
+
+post_issue "Settings API: write to default_app_settings.json and en.json" "$(cat <<'EOB'
+## Problem
+Settings UI edits must persist to source files for developer-only low-code flow. Need backend API to write updates to `src/frontend/src/lib/config/default_app_settings.json` and `src/frontend/messages/en.json` safely.
+
+## Requirements
+- POST endpoint to accept validated payload for visual settings and copy
+- Writes only to allowed files/paths; reject arbitrary paths
+- Preserve JSON formatting (stable ordering) and validate JSON
+- Authn/authz: restricted to dev/admin users
+- Unit tests for validation and file write
+
+## References
+- default_app_settings.json
+- messages/en.json
+- settingsStore.ts
+
+## Acceptance
+- Endpoint writes changes safely with validation
+- Errors on invalid schema or missing auth
+- JSON remains valid and ordered
+EOB
+)"
+
+post_issue "Settings API: rebuild trigger (Apply Changes support)" "$(cat <<'EOB'
+## Problem
+After writing settings/copy to source files, developers need to trigger a rebuild manually from the Settings page.
+
+## Requirements
+- Backend endpoint to trigger rebuild command
+- Command configurable; default: `npm run build` or project-standard
+- Run in repo root `/home/cmb115/projects/Universal-API`
+- Stream/return status; handle failures gracefully
+- Authn/authz restricted to dev/admin
+
+## Acceptance
+- Endpoint kicks off rebuild and returns status
+- Fails safely with clear error if command fails
+- Works on dev machines; production guarded/disabled by config
+EOB
+)"
+
+post_issue "Remove CopySettings duplication; migrate copy to en.json" "$(cat <<'EOB'
+## Problem
+Copy is split between CopySettings (runtime) and Paraglide `en.json` (build-time). With Option E, settings UI will write directly to `en.json`. Need to consolidate to single source of truth.
+
+## Tasks
+- Audit where copy uses CopySettings vs `t()`
+- Move customizable text to `messages/en.json`
+- Remove redundant CopySettings fields and update types
+- Ensure settings UI reads/writes `en.json` via new API
+- Keep visual settings in `default_app_settings.json`
+
+## Acceptance
+- No duplicate copy sources; all strings resolved from `t()` backed by `en.json`
+- Settings UI surfaces the relevant `en.json` entries for editing
+- Types cleaned up accordingly
+EOB
+)"
+
+post_issue "Settings UI: Add Apply Changes button (write + rebuild)" "$(cat <<'EOB'
+## Problem
+After editing settings/copy, developers need an explicit "Apply Changes" to persist to files and trigger rebuild.
+
+## Requirements
+- Button in settings header or footer
+- On click: call settings write API, then rebuild trigger API
+- Show progress/success/error states; disable during run
+- Guard against unsaved changes; confirm before discard
+
+## Acceptance
+- Apply button successfully writes files and triggers rebuild
+- Clear feedback on success/failure
+- Prevents concurrent double-submit
+EOB
+)"
+
+post_issue "Settings Navigation: reorganize sections for growth" "$(cat <<'EOB'
+## Problem
+Current navigation (General/Canvas/Toolbar/Nodes) is cramped. Need structure that matches full surface area.
+
+## Proposed Structure
+- Application: Branding, Behavior
+- Appearance: Typography, Spacing & Radius, Elevation/Shadows, Buttons, Badges
+- Canvas: Background, Grid, Empty State
+- Layout: Header, Toolbar, Sidebar
+- Nodes: Source, Transform, Destination (+ form overrides)
+- Forms: Layout/Validation/Actions
+- Hotkeys: Canvas, Forms, Global
+- Copy & Text: Main page, Dialogs, Toasts, Connection tests, Empty state
+
+## Acceptance
+- Navigation updated to new structure
+- Existing sections still reachable
+- Placeholder/links for new sections
+EOB
+)"
+
+post_issue "Settings UI: Typography editors" "$(cat <<'EOB'
+## Problem
+Typography settings exist in `ThemeTypographySettings` but no UI to edit.
+
+## Tasks
+- Add Typography section
+- Editors for font families, sizes (display/title/subtitle/label/appTitle/nodeTitle), weights, letter spacing
+- Live preview
+- Wire to settings write API (default_app_settings.json)
+
+## Acceptance
+- Typography editable via UI with preview
+- Writes to JSON via API
+- Undo/redo continues to work locally
+EOB
+)"
+
+post_issue "Settings UI: Form layout editors" "$(cat <<'EOB'
+## Problem
+`FormLayoutSettings` defined but not editable; devs must hand-edit JSON.
+
+## Tasks
+- Add Forms section with layout, inputs, validation, actions
+- Controls for gaps, padding, heights, radius token, validation mode/debounce, action alignment
+- Live form preview
+- Persist via settings API
+
+## Acceptance
+- All FormLayoutSettings fields editable
+- Preview updates live
+- Writes to default_app_settings.json
+EOB
+)"
+
+post_issue "Settings UI: Hotkey configuration" "$(cat <<'EOB'
+## Problem
+HotkeySettings exist (canvas/form/dialog/global) but not visible/editable.
+
+## Tasks
+- Hotkeys section listing bindings by context
+- Phase 1: read-only display; Phase 2: editable with conflict detection
+- Persist via settings API
+
+## Acceptance
+- Hotkeys visible in settings UI
+- Editable mode handles conflicts or warns
+- Writes to default_app_settings.json
+EOB
+)"
+
+post_issue "Settings UI: Badge color token editors" "$(cat <<'EOB'
+## Problem
+BadgePalette tokens (blue/green/amber/red/purple) not exposed in UI; needed for dynamic badges (auth type, etc.).
+
+## Tasks
+- Add Badges subsection under Appearance
+- Color pickers for background/border/text per variant, both light/dark
+- Live badge preview
+- Persist via settings API
+
+## Acceptance
+- All badge variants editable
+- Preview reflects light/dark modes
+- Writes to default_app_settings.json
+EOB
+)"
+
+post_issue "Settings UI: Canvas empty state styling" "$(cat <<'EOB'
+## Problem
+EmptyStateTokens (card sizes, typography, grid) are extensive but not editable.
+
+## Tasks
+- Empty State subsection under Canvas
+- Grouped controls for card layout, typography, grid
+- Live preview of empty state
+- Persist via settings API
+
+## Acceptance
+- Key empty state properties editable
+- Preview matches stored values
+- Writes to default_app_settings.json
+EOB
+)"
+
+post_issue "Settings UI: Button variant editors" "$(cat <<'EOB'
+## Problem
+ThemeButtonVariants (8 variants) not editable; colors hard to tweak.
+
+## Tasks
+- Buttons subsection under Appearance
+- Variant selector with color pickers for background/hover/active/text/border (+ textHover)
+- Live preview of states
+- Persist via settings API
+
+## Acceptance
+- All 8 variants editable
+- Preview shows states
+- Writes to default_app_settings.json
+EOB
+)"
+
+post_issue "Settings UI: Elevation/Shadow editors" "$(cat <<'EOB'
+## Problem
+ThemeElevationSettings for light/dark not editable.
+
+## Tasks
+- Elevation subsection under Appearance
+- Editors for level1/2/3/hover shadows per mode
+- Validate CSS shadow strings; preview card
+- Persist via settings API
+
+## Acceptance
+- Shadows editable and previewed
+- Validation prevents invalid values
+- Writes to default_app_settings.json
+EOB
+)"
+
+post_issue "Node settings: add form-specific overrides" "$(cat <<'EOB'
+## Problem
+Forms are contextually tied to node types but settings lack form overrides.
+
+## Tasks
+- Extend Source/Transform/Destination settings with `form` block (e.g., showTestButton, testButtonPosition, validationMode override, autoSaveEnabled)
+- Update types and defaults in default_app_settings.json
+- Add editors in node sections; forms consume overrides
+
+## Acceptance
+- Form overrides defined per node type
+- UI to edit overrides
+- Forms use these settings
+EOB
+)"
+
+post_issue "Copy: add main page strings to en.json" "$(cat <<'EOB'
+## Problem
+Main page has hardcoded strings (Config Sections, Back to Pipeline, Configuration, Open canvas, Go to home page).
+
+## Tasks
+- Add these to `messages/en.json`
+- Replace literals in `src/frontend/src/routes/+page.svelte` and AppHeader with `t()`
+- Expose in settings UI for editing via new en.json write API
+
+## Acceptance
+- All identified strings resolved via t()
+- Settings UI can edit these via en.json updates
+EOB
+)"
+
+post_issue "Copy: add toast messages to en.json" "$(cat <<'EOB'
+## Problem
+Toast/status messages (save success/error per node type) are hardcoded.
+
+## Tasks
+- Add toast texts to `messages/en.json` (success/error for source/transform/destination/config)
+- Replace literals in `+page.svelte` with `t()`
+- Expose in settings UI via en.json editing
+
+## Acceptance
+- Toasts resolved via t()
+- Editable via settings UI -> en.json
+EOB
+)"
+
+post_issue "Copy: add connection test messages to en.json" "$(cat <<'EOB'
+## Problem
+Connection test status strings hardcoded.
+
+## Tasks
+- Add testing/success/unable-to-verify/failure strings to `messages/en.json`
+- Replace literals in `+page.svelte` with `t()`
+- Editable via settings UI
+
+## Acceptance
+- Connection test messages resolved via t()
+- Editable through settings page writes to en.json
+EOB
+)"
+
+post_issue "Copy: add missing dialog copy to en.json" "$(cat <<'EOB'
+## Problem
+Dialog copy partly in i18n, partly hardcoded; not editable through settings.
+
+## Tasks
+- Ensure draft recovery, save pipeline, pipeline library dialog strings complete in `messages/en.json`
+- Replace any remaining literals
+- Expose these keys in settings UI for editing via en.json write API
+
+## Acceptance
+- All dialog copy resolved via t()
+- Editable through settings page
+EOB
+)"
+
+post_issue "Copy: canvas empty state text editors" "$(cat <<'EOB'
+## Problem
+Canvas empty state text in i18n but not editable in settings UI.
+
+## Tasks
+- Add empty state copy keys to `messages/en.json` if missing (pill, heading, body, intent labels/descriptions)
+- Expose in settings UI alongside styling controls
+- Use t() in Canvas component
+
+## Acceptance
+- Empty state copy editable via settings page
+- Canvas uses t() for these strings
+EOB
+)"
+
+post_issue "Docs: CSS override pattern for context styling" "$(cat <<'EOB'
+## Problem
+Context-specific styling uses CSS vars + classes but not documented, leading to inconsistent patterns.
+
+## Tasks
+- Document when to use settings vs CSS class overrides
+- Define naming convention (.node-form-input, .source-node-input, etc.)
+- Show variable override pattern examples
+- Add doc to .cursor/context or project docs
+
+## Acceptance
+- Documentation exists with examples and guidance
+- Linked from contributing/design docs
+EOB
+)"
+
+post_issue "Refactor: settings section renderer pattern" "$(cat <<'EOB'
+## Problem
+Settings page has large manual section blocks; hard to extend.
+
+## Tasks
+- Create registry-driven section renderer (field configs -> components)
+- Extract field metadata to config file (e.g., settingsRegistry.ts)
+- Replace long chain of if/else with renderer
+- Ensure parity with existing functionality
+
+## Acceptance
+- Renderer covers existing sections
+- Adding new section requires registry entry only
+- Page size reduced and maintainable
+EOB
+)"

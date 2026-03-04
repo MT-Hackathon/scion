@@ -1,0 +1,78 @@
+---
+description: "Java Spring Boot patterns, service decomposition, JPA entity rules, exception handling, and forbidden patterns. Use when writing, reviewing, or planning Java code."
+globs: "*.java"
+alwaysApply: false
+---
+
+<ANCHORRULE-CONSTITUTION-JAVA>
+
+# Java Constitution
+
+## Table of Contents & Resources
+
+- [Core Concepts](#core-concepts)
+- [Version Alignment](#version-alignment)
+- [Security Mandates](#security-mandates)
+- [Reference: java-spring-boot Skill](../../skills/java-spring-boot/SKILL.md)
+
+## Core Concepts
+
+### Dependency Injection (MANDATED)
+- Use **constructor injection** exclusively.
+- NEVER use field injection (`@Autowired` on fields).
+- Declare dependencies as `private final`.
+
+### Control Flow & Safety
+- **Guard Clauses**: Use early returns and null checks at boundaries.
+- **Optional Handling**: Prefer `.map()`, `.flatMap()`, `.orElse()`, `.orElseGet()` for business lookups. Reserve `.orElseThrow()` for system invariants where absence is a programming error.
+- **Result Types**: Methods with multiple business outcomes (success, not-found, invalid, denied) return a record with a status enum. Callers use exhaustive `switch` expressions.
+- **Case Normalization**: Use `Locale.ROOT` for all case operations on domain identifiers (e.g., `id.toLowerCase(Locale.ROOT)`).
+- **Null-Safe Equality**: Use `Objects.equals(a, b)` when either side can be null. Never `variable.equals(literal)` — prefer `"LITERAL".equals(variable)` or `Objects.equals()`.
+- **Enum Identity**: Compare enums with `==`, never `.equals()`. Enums are singletons; `==` is null-safe and faster.
+
+### Naming Conventions
+| Element | Convention | Example |
+|---------|-----------|---------|
+| Classes/Interfaces | `PascalCase` | `WorkflowService` |
+| Variables/Methods | `camelCase` | `findActiveWorkflows` |
+| Constants | `UPPER_SNAKE_CASE` | `MAX_RETRIES` |
+| Packages | `lowercase` | `doa.procurement.workflow` |
+
+## Version Alignment (CRITICAL)
+
+| Library/Feature | Requirement (MANDATED) | Prohibited |
+|-----------------|-------------------------|------------|
+| **Jackson 3.x** | `tools.jackson.*` | `com.fasterxml.*` |
+| **Security 7**  | Lambda DSL only | `.and()` chaining |
+| **Jakarta EE**  | `jakarta.*` | `javax.*` |
+| **HTTP Client** | `RestClient` | `RestTemplate` |
+| **Java 25**     | `list.getFirst()`, `list.getLast()` | Index-based boundaries |
+
+## Security Mandates
+
+- **Controller Guards**: Every public method in a `@RestController` MUST have a `@PreAuthorize` annotation.
+- **Context Access**: Always null-check `SecurityContextHolder.getContext()` before access.
+- **Validation**: Every `@RequestBody` parameter MUST have `@Valid`. OpenAPI `required` fields generate `@NotNull` annotations; `@Valid` enforces them at the controller boundary. Exception: methods overriding generated OpenAPI interface methods cannot redeclare parameter annotations (Bean Validation HV000151) — configure `@Valid` at the generator level instead.
+
+## Structured Logging (MANDATED)
+
+Use the domain-action prefix format to ensure logs are searchable and parseable.
+
+```java
+log.warn("DOMAIN_ACTION: reason={}, value={}", reason, value);
+// Example: log.info("WORKFLOW_TRANSITION: from={}, to={}", oldState, newState);
+```
+
+## Forbidden Patterns
+
+- **Field Injection**: Use constructors exclusively.
+- **Logic Leakage**: Business logic in Controllers or Mappers.
+- **Manual Data Fixing**: Case conversion in mappers to hide source quality issues.
+- **Silent Failures**: Empty catch blocks or unvalidated inputs.
+- **Exceptions as Control Flow**: Throwing custom exceptions for expected business states (role not found, validation failure, routing decision). Use result records with status enums.
+- **Magic Numbers**: Use named constants.
+- **Broad Exception Catches**: `catch(Exception)` and `catch(Throwable)` in business logic. Catch specific types (`DataAccessException`, `JacksonException`, `RuntimeException`). Best-effort side-effects (notifications) may catch `RuntimeException` with a justification comment.
+- **Unnecessary Autoboxing**: `Integer.valueOf(n)` where autoboxing suffices. Write `version = 1`, not `version = Integer.valueOf(1)`.
+- **Unguarded UUID Parsing**: `UUID.fromString(str)` without try-catch or `UuidUtils.tryParse()`. Invalid input throws `IllegalArgumentException`.
+
+</ANCHORRULE-CONSTITUTION-JAVA>

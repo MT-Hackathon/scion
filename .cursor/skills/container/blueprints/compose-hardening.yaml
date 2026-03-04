@@ -1,0 +1,65 @@
+# BLUEPRINT: Docker/Podman Compose Service Hardening
+# STRUCTURAL: restart policy, resource limits, cap_drop, read-only filesystem, no-new-privileges, health checks, network isolation
+# ILLUSTRATIVE: service name, image, ports, health check endpoint — replace with project specifics
+
+services:
+  # ILLUSTRATIVE: Replace 'app' with your service name
+  app:
+    # ILLUSTRATIVE: Replace with your actual versioned image reference; never :latest in production
+    image: registry.example.com/org/app:1.0.0
+
+    # STRUCTURAL: Always restart on failure; prevents silent downtime after crash or host reboot
+    restart: unless-stopped
+
+    ports:
+      # ILLUSTRATIVE: Adjust host:container port mapping to your application
+      - "8080:8080"
+
+    environment:
+      # ILLUSTRATIVE: Inject runtime secrets as env vars — never bake into image layers
+      - APP_ENV=${APP_ENV}
+
+    networks:
+      # STRUCTURAL: Explicit network assignment — default bridge exposes all services to each other
+      - app-net  # ILLUSTRATIVE: rename to match your service mesh
+
+    # STRUCTURAL: Resource limits prevent container runaway
+    deploy:
+      resources:
+        limits:
+          # ILLUSTRATIVE: Tune memory and CPU to your application's observed profile
+          memory: 512M
+          cpus: "0.5"
+
+    # STRUCTURAL: Read-only root filesystem forces intentional write paths
+    read_only: true
+    tmpfs:
+      # STRUCTURAL: Declare all paths that require write access at runtime
+      # ILLUSTRATIVE: Add or remove paths to match your application's write requirements
+      - /tmp
+      - /var/run
+
+    # STRUCTURAL: Drop all Linux capabilities; add back only what the application requires
+    cap_drop:
+      - ALL
+    # cap_add:                    # ILLUSTRATIVE: uncomment and list only required capabilities
+    #   - NET_BIND_SERVICE        # Example: binding to ports < 1024 as non-root
+
+    # STRUCTURAL: Prevent privilege escalation attacks
+    security_opt:
+      - no-new-privileges:true
+
+    # STRUCTURAL: All services must define health checks
+    healthcheck:
+      # ILLUSTRATIVE: Replace with your health endpoint or TCP check
+      # TCP alternative: test: ["CMD", "nc", "-z", "localhost", "5432"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+# STRUCTURAL: Named networks provide isolation; services on separate networks cannot communicate directly
+networks:
+  app-net:  # ILLUSTRATIVE: add `internal: true` for services that need no external access
+    driver: bridge

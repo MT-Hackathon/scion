@@ -1,0 +1,50 @@
+---
+alwaysApply: true
+---
+
+<ANCHORRULE-ROOTSTOCK-SYSTEM>
+
+# Rootstock System Invariants
+
+Knowledge curation and distribution system for shared `.cursor` and `.claude` AI development environments — Tauri desktop app (Rust + SvelteKit), CLI (`graft-cli`), Rootstock web app, and AI skill. Core sync logic is converging into the Rust `graft-core` crate used by desktop and CLI, with `app/backend/` retained as a reference implementation.
+
+**Stack**: Desktop: Rust/Tauri 2.0 | Frontend: SvelteKit/Svelte 5 (adapter-static) | CLI: Rust/clap | Reference backend: Python/FastAPI | Governance: `.cursor/` in this repo
+
+### The 9 Invariants
+
+**1. Token Budget Governance**
+Every session pays for every token in canonical. A change earns its place only if the AI will do something differently next session because it exists. Growth is borrowed against every future conversation, not paid once.
+
+**2. Placement Determines Reachability**
+Rules fire regardless of relevance (cost tokens always). Skills are found only when chosen. Placement is not organization — it's the activation mechanism. A skill's description is its only discovery surface.
+
+**3. Integration Over Accumulation**
+Overlapping skills tax discovery and fracture the knowledge network. Check for description overlap before creating new artifacts. Overlap = consolidation signal — integrate rather than append.
+
+**4. Canonical Wins on Pull**
+3-way merges in knowledge markdown produce blended intent with unclear ownership. Local improvements push upstream and get curated. If a local change is a live correction, push it before the next pull overwrites it.
+
+**5. Policy-Driven Sync: Fail Closed**
+Every synced file must have an explicit lifecycle classification in `graft-policy.json`. Unknown files MUST fail sync, not default to overwrite. Applies to all managed surfaces (`.cursor/`, `.claude/`).
+
+**6. Trust Boundaries**
+Tools sync, artifacts don't, secrets never. Pipeline scripts = shared infrastructure. Generated artifacts = per-user. Secrets = ignore (not protect). Protect = created once; ignore = rootstock has no knowledge.
+
+**7. Portable Layer Converges; Protected Layer Diverges**
+Rules 000–199 converge after curation. Rules 200+ diverge by design, never overwritten by `graft pull`. The policy boundary at 200 is the architectural seam between shared and local.
+
+**8. Curation Authority**
+AI recommends with specific rubric citations. Human approves. Decision is recorded with rationale. Default disposition: reject. Burden of proof on the evolution. Structured output schema from `curation-protocol.md` is mandatory.
+
+**9. Script Portability**
+PEP 723, `uv run --script`, no workspace-coupled imports. `uv run --script <path>` must succeed from any directory on any OS. Portability is what makes scripts executable by any instance in any connected environment.
+
+### Key References
+| Document | Purpose |
+|----------|---------|
+| [Rootstock Mental Model](../../skills/rootstock/resources/rootstock-mental-model.md) | Lifecycle, sync model, roles, system states |
+| [Curation Protocol](../../skills/rootstock/resources/curation-protocol.md) | Taxonomy, quality rubric, structured output contract |
+| [Graft Policy](../../skills/rootstock/resources/graft-policy.json) | File lifecycle classifications |
+| [Rootstock Skill](../../skills/rootstock/SKILL.md) | Script manifest, participation model |
+
+</ANCHORRULE-ROOTSTOCK-SYSTEM>

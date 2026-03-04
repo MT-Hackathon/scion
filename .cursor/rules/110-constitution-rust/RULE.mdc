@@ -1,0 +1,51 @@
+---
+description: "Rust ownership, borrowing, error architecture (thiserror/anyhow), forbidden patterns (unwrap, clone chains, unsafe), compilation discipline, and quality gates. Use when writing, reviewing, or planning Rust code."
+globs: "*.rs"
+alwaysApply: false
+---
+
+<ANCHORRULE-CONSTITUTION-RUST>
+
+# Rust Constitution
+
+## Ownership & Borrowing (MANDATED)
+- Borrow first: `&T` for read, `&mut T` for mutation, owned `T` only for transfer
+- Function signatures are ownership contracts — encode move/borrow intent explicitly
+- Prefer borrowed inputs (`&str`, `&[T]`) over owned `String`/`Vec<T>` when read-only
+- Move at clear boundaries; cloning is a last resort, not a borrow-checker escape
+- Iterator choice must match ownership semantics: `.iter()`, `.iter_mut()`, `.into_iter()`
+- Never add `'static` or extra lifetimes to silence compiler diagnostics
+
+## Error Architecture (MANDATED)
+- Library/domain crates return typed errors via `thiserror`
+- Application boundaries use `anyhow::Result<T>` for orchestration
+- Propagate with `?`; avoid manual match ladders that only rethrow
+- Add context once per boundary with `.context(...)` / `.with_context(...)`
+- Recoverable business outcomes use typed results, not panic-driven control flow
+- Panics are reserved for invariant violations and impossible states
+
+## Forbidden Patterns
+- `unwrap()` / `expect()` in production paths (tests and prototypes only)
+- Panic-based control flow for expected, recoverable outcomes
+- Repeated `.clone()` chains to bypass ownership design
+- Defaulting to `Rc<RefCell<T>>` before redesigning ownership and data flow
+- `unsafe` without an explicit invariant comment and a defined containment boundary
+- `todo!()` / `unimplemented!()` in merged production code
+
+## Compilation Discipline
+- Fix the first compiler error first; later errors are often cascade noise
+- Start with `cargo check` before running heavier gates
+- Run one cargo pipeline per `target/` directory at a time
+- Do not suppress lints to reach green; resolve the root cause
+
+## Quality Gates (MINIMUM)
+- `cargo check --workspace --all-targets`
+- `cargo fmt --all -- --check`
+- `cargo clippy --workspace --all-targets -- -D warnings`
+- `cargo test --workspace`
+
+## Escalation
+- If fixes trend toward clone or refcell proliferation, stop and redesign ownership
+- If compile failures cascade cross-module, resolve upstream signature contracts first
+
+</ANCHORRULE-CONSTITUTION-RUST>

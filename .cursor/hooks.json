@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "hooks": {
+    "subagentStop": [
+      {
+        "command": "uv run .cursor/hooks/catalog_agent.py"
+      },
+      {
+        "command": "uv run .cursor/hooks/executor-quality-gate.py"
+      }
+    ],
+    "stop": [
+      {
+        "command": "uv run .cursor/hooks/session_capture.py"
+      }
+    ],
+    "sessionStart": [
+      {
+        "command": "uv run .cursor/hooks/session_briefing.py"
+      }
+    ]
+  }
+}

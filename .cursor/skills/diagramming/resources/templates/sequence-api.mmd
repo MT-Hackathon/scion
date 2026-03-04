@@ -1,0 +1,24 @@
+%% Sequence Diagram Template -- API Call
+%% Replace actor/participant names with actual components.
+%% Add/remove steps as needed.
+
+sequenceDiagram
+    actor User
+    participant UI as Frontend
+    participant Auth as Auth Provider
+    participant API as REST Controller
+    participant Svc as Service Layer
+    participant DB as Database
+
+    User->>UI: Initiate action
+    UI->>Auth: Validate token
+    Auth-->>UI: Token valid
+
+    UI->>API: POST /api/v1/resource
+    API->>API: Validate request body
+    API->>Svc: processResource(dto)
+    Svc->>DB: INSERT resource
+    DB-->>Svc: Saved entity
+    Svc-->>API: ResourceResponse
+    API-->>UI: 201 Created
+    UI-->>User: Success confirmation

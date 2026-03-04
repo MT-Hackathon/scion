@@ -1,0 +1,29 @@
+# Per-machine generated data
+*.db
+
+# Python artifacts
+__pycache__/
+*.pyc
+
+# Git internals
+.git/
+
+# Virtual environments
+.venv/
+venv/
+
+# IDE/editor local state
+.vscode/
+*.code-workspace
+
+# Per-user graft config (contains local filesystem paths)
+.graft.registry.json
+.graft.user.json
+.graft.state.json
+.graft.manifest.json
+
+# Per-session generated content
+.cursor/rules/999-codebase-briefing/
+.cursor/handoffs/
+.cursor/.temporal-self/
+.cursor/.codebase-sense/

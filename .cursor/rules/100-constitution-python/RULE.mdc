@@ -1,0 +1,72 @@
+---
+description: "Python type annotations, naming conventions, import organization, dataclass rules, Polars performance patterns, database query efficiency, and forbidden patterns. Use when writing, reviewing, or planning Python code."
+globs: "*.py"
+alwaysApply: false
+---
+
+<ANCHORRULE-CONSTITUTION-PYTHON>
+
+# Python Constitution Rule
+
+## Table of Contents & Resources
+- [Core Concepts](#core-concepts)
+- [Examples: Guards & Quality](resources/examples-guards-quality.md)
+- [Reference: Naming](resources/reference-naming.md)
+- [Reference: Imports](resources/reference-imports.md)
+- [Reference: Performance](resources/reference-performance.md)
+- [Reference: Approved Packages](resources/reference-approved-packages.md)
+
+## Core Concepts
+
+### Type Annotations (MANDATED)
+All functions must have type annotations for arguments and return values.
+```python
+def process_user(user_id: str, data: dict[str, Any]) -> UserResult:
+```
+
+### Python Naming Conventions
+- **Variables**: `snake_case`, descriptive, with units (`timeout_seconds`)
+- **Functions**: `snake_case`, action verb + object (`process_user`, `validate_config`)
+- **Classes**: `CapWords` / `PascalCase`
+- **Constants**: `UPPER_SNAKE_CASE`
+- **Booleans**: `is_*`, `has_*`, `requires_*`
+- **ECS Systems**: Keep `_system` suffix (`transform_system`, `validation_system`)
+
+### Python Imports
+- Group: stdlib → third-party → first-party
+- Use absolute imports: `from src.backend.module import function`
+- No wildcards (`from x import *`)
+- Keep imports at file top
+
+### Docstrings
+1-2 sentences describing purpose. Use Google style for complex functions.
+```python
+def calculate_total(items: list[Item]) -> Decimal:
+    """Calculate the total price for all items including tax."""
+```
+
+### Dataclass Rules (Python-Specific)
+- No methods on dataclasses (pure data only)
+- Validation as separate functions, not in `__post_init__`
+- Never put business logic in dataclasses
+- For `slots=True` dataclasses, all field types must be immutable: `tuple` not `list`, `frozenset` not `set`, `tuple[tuple[K,V],...]` not `dict[K,V]`. Mutable type annotations in `slots=True` dataclasses trigger a known basedpyright limitation that corrupts `__init__` inference — for that class and sometimes for subsequently-defined classes in the same file. This is a static analysis failure, not a runtime one; tests pass, mypy may pass, but basedpyright errors appear on unrelated classes.
+
+### Polars Performance Patterns
+- Vectorized operations only; no row iteration
+- Copy-on-write; no in-place DataFrame mutation
+- Keep caches in DataFrames, not globals or LRU
+- Use `lazy()` for query optimization
+
+### Database Query Efficiency (MANDATED)
+Applies to relational DB access (SQLAlchemy/SQL drivers):
+- Prevent N+1 query patterns with joins, eager loading, or batched fetches for related data.
+- Push filtering/sorting/aggregation to SQL; avoid large in-memory post-filtering in Python.
+- Any new foreign-key relationship must ship with an index in migration SQL (see `115-constitution-sql`).
+
+### Python-Specific Forbidden
+- Type comments (`# type: int`) - use annotations
+- Methods on dataclasses
+- Row-wise loops on DataFrames
+- `from x import *`
+
+</ANCHORRULE-CONSTITUTION-PYTHON>

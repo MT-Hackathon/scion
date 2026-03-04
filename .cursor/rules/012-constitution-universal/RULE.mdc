@@ -1,0 +1,73 @@
+---
+description: "Universal code quality: guard clauses (tiger-style), linear flow, pure functions, single responsibility, naming conventions, import organization, and forbidden patterns. Use when writing or reviewing code in any language."
+globs: "*.py,*.rs,*.java,*.js,*.ts,*.svelte"
+alwaysApply: false
+---
+
+<ANCHORRULE-CONSTITUTION-UNIVERSAL>
+
+# Universal Code Constitution
+
+## Table of Contents & Resources
+- [Core Concepts](#core-concepts)
+- [Examples: Guard Clauses](resources/examples-guard-clauses.md)
+- [Reference: Forbidden Patterns](resources/reference-forbidden-patterns.md)
+
+## Core Concepts
+
+### Guard Clauses (Tiger-Style)
+At function start, early returns for invalid inputs. Single success path at the end.
+- Max 3 nesting levels
+- Minimum 2 guards per significant function
+- Fast-fail for invalid state
+
+### Pure Functions
+Functions should have no side effects where possible.
+- Same input → same output
+- No hidden state mutation
+- Explicit dependencies via parameters
+
+### Linear Code (Tiger-Style)
+One successful path through the function. Guard clauses handle early exits; the success path stays linear.
+
+- Guard clauses are the only early returns
+- Converge all success flow to a single return/commit point
+- Ternary is for value selection only, never control flow or side effects
+- Prefer straight-line flow over if/else ladders; refactor to guard clauses + linear core
+- **Performance**: fewer branches reduces overhead, improves branch prediction on hot paths, and makes tuning reliable
+
+### Single Responsibility
+Each function does one thing well.
+- Max 60 lines per function (smell threshold at 40; investigate if exceeding)
+- Complexity ≤5 (cyclomatic)
+- Max 500 lines per module/file
+
+### Descriptive Names
+Names should be self-documenting.
+- No abbreviations (use `request` not `req`, `configuration` not `cfg`)
+- No single-letter variables except loop indices
+- Include units where applicable (`timeout_seconds`, `size_bytes`)
+
+### Import Organization
+Group imports consistently:
+1. Standard library / built-in
+2. Third-party packages
+3. First-party / project code
+
+No wildcards; keep imports at file top.
+
+### Forbidden Patterns
+
+| Pattern | Why Forbidden |
+|---------|---------------|
+| Bare except / catch-all | Swallows errors, hides bugs |
+| Global mutable state | Hidden dependencies, race conditions |
+| Magic numbers | Unclear intent, hard to change |
+| Mutable defaults | Shared state between calls |
+| Unbounded retry | Can hang indefinitely |
+| Exceptions as control flow | Expected business outcomes (not found, invalid state, denied) routed through throw/catch instead of result types; forces callers to branch via catch blocks instead of switch expressions |
+| Nested error handling >3 | Usually indicates business logic shoehorned into exception handlers; refactor to result types with exhaustive switch |
+| Hardcoded display name maps | Single source of truth violation; breaks when backend adds new values; scattered maintenance burden |
+| Unlayered data presentation | Every value shown to users needs a fallback chain; bare lookups without fallback crash on missing data |
+
+</ANCHORRULE-CONSTITUTION-UNIVERSAL>

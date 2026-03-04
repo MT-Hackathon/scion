@@ -1,0 +1,13 @@
+---
+description: "Angular safety patterns for procurement web app: DOM sanitization, route guards, HTTP interceptors, and SCSS security boundaries. Use when working on Angular security or safety-critical UI."
+globs: ["**/procurement-web/src/**/*.ts", "**/procurement-web/src/**/*.scss"]
+alwaysApply: false
+---
+
+## Angular Safety Patterns
+
+1. **Interceptor → Service → HttpClient DI cycle** — An HTTP interceptor that `inject()`s a service whose class body eagerly `inject(HttpClient)` creates a circular dependency (NG0200). The cycle destabilizes bootstrap, corrupts CDK overlay initialization. Fix: services consumed by interceptors must lazy-resolve `HttpClient` via `Injector.get(HttpClient)` in a getter.
+2. **Non-relative local specifiers in global Sass** — Using `'app/...'` instead of `'./app/...'` in `style.scss` breaks Sass module resolution for the global stylesheet bundle. Silent loss of global tokens, dark-mode overrides, and layout utilities. Check build output for Sass resolution errors first.
+3. **Frontend `titlecase` pipe for domain values** — Use `DisplayNamePipe` backed by server labels; `humanize()` utility for fallback only. Never use generic titlecase for domain identifiers.
+4. **Hardcoded display name maps** — Backend `DisplayNameRegistry` is the source of truth; frontend constants are fallbacks only. Never maintain parallel display name maps.
+5. **Scattered label translation logic** — One resolution path (`DisplayNameRegistry.resolve()`), two access patterns (service + pipe). Never add a third.

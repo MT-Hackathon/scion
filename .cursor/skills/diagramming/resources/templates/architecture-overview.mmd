@@ -1,0 +1,37 @@
+%% Architecture Overview Template
+%% Replace placeholder names with actual modules/services.
+%% Add/remove subgraphs and nodes as needed.
+
+flowchart TB
+    subgraph frontend [Frontend]
+        UI[UI Components]
+        State[State Management]
+        API_Client[API Client]
+    end
+
+    subgraph backend [Backend]
+        Controllers[REST Controllers]
+        Services[Service Layer]
+        Repositories[Repository Layer]
+    end
+
+    subgraph data [Data]
+        DB[(Database)]
+        Cache[(Cache)]
+    end
+
+    subgraph external [External Systems]
+        Auth[Auth Provider]
+        Integration[Third-Party API]
+    end
+
+    UI --> State
+    State --> API_Client
+    API_Client --> Controllers
+    Controllers --> Services
+    Services --> Repositories
+    Repositories --> DB
+    Services --> Cache
+    Services --> Integration
+    API_Client --> Auth
+    Controllers --> Auth

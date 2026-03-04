@@ -1,0 +1,37 @@
+%% ER Diagram Template
+%% Define entities and their relationships.
+%% Mermaid ER syntax: ENTITY ||--o{ RELATED : "relationship"
+%% Cardinality: ||=exactly one, o{=zero or more, |{=one or more, o|=zero or one
+
+erDiagram
+    USER {
+        uuid id PK
+        string email
+        string display_name
+        enum status "ACTIVE, DEACTIVATED"
+        timestamp created_at
+    }
+
+    ROLE {
+        uuid id PK
+        string name
+        string description
+    }
+
+    USER_ROLE {
+        uuid user_id FK
+        uuid role_id FK
+        boolean is_active
+    }
+
+    RESOURCE {
+        uuid id PK
+        string title
+        uuid created_by FK
+        enum status "DRAFT, SUBMITTED, APPROVED"
+        timestamp updated_at
+    }
+
+    USER ||--o{ USER_ROLE : "has"
+    ROLE ||--o{ USER_ROLE : "assigned to"
+    USER ||--o{ RESOURCE : "creates"

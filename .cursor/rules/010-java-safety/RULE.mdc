@@ -1,0 +1,16 @@
+---
+description: "Java safety patterns for procurement API: input validation, SQL injection prevention, authentication guards, and exception security. Use when working on Java API security or safety-critical endpoints."
+globs: ["**/procurement-api/**/*.java"]
+alwaysApply: false
+---
+
+## Java Safety Patterns
+
+1. **`@RequestBody` without `@Valid`** — Bean Validation constraints (`@NotNull`, `@Size`, etc.) are never enforced without `@Valid`. Every `@RequestBody` MUST have `@Valid`.
+2. **Null-unsafe `.equals()`** — `variable.equals(literal)` when `variable` can be null. Use `Objects.equals(a, b)` or `"LITERAL".equals(variable)`.
+3. **Broad exception catches** — `catch(Exception)` masks infrastructure failures and hides bugs. Catch specific types. Best-effort side-effects may catch `RuntimeException` with explicit justification.
+4. **Unsafe case conversion** — Use `Locale.ROOT` always; never convert case in mappers to hide data quality issues; validate and reject malformed inputs at boundaries.
+5. **Duplicate DTO definitions** — Creates drift between endpoints and inconsistent OpenAPI output. Reuse shared DTO records or give intentionally distinct models explicit names.
+6. **Stale Springdoc annotations** — Produces inaccurate `/v3/api-docs` and breaks contract integrity. Keep annotations synchronized with actual behavior.
+7. **OpenAPI enums for configurable values** — Use strings instead; document known values in `@Schema` description. Enums lock the contract against configuration changes.
+8. **Scattered normalization** — Use central utilities (e.g., `UserIdNormalizer`) and boundary-based normalization. Never normalize in multiple places.

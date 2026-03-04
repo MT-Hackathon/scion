@@ -1,0 +1,70 @@
+---
+description: "TypeScript strict typing, interface-first design, forbidden patterns (any, type assertions, enums), and import organization. Use when writing or reviewing TypeScript code."
+globs: "*.ts"
+alwaysApply: false
+---
+
+<ANCHORRULE-CONSTITUTION-TYPESCRIPT>
+
+# TypeScript Constitution
+
+## Table of Contents & Resources
+
+- [Core Concepts](#core-concepts)
+- [Examples: Type Patterns](resources/examples-type-patterns.md)
+- [Reference: Forbidden Patterns](resources/reference-forbidden-patterns.md)
+
+## Core Concepts
+
+### Strict Type Checking (MANDATED)
+
+- All `strict` options enabled in `tsconfig.json`
+- `strictNullChecks`: true
+- `noImplicitAny`: true
+- `strictPropertyInitialization`: true
+
+### No `any` Type
+
+- NEVER use `any` type
+- Use `unknown` when type is uncertain
+- Use generics for flexible typing
+- Use type guards for narrowing
+
+### Type Inference
+
+- Prefer type inference when type is obvious
+- Explicit types for function parameters
+- Explicit types for public API boundaries
+- Let TypeScript infer return types when obvious
+
+### Import Organization
+Group imports in order:
+
+1. Angular core (`@angular/*`)
+2. Third-party packages
+3. Project aliases (`@core/*`, `@env/*`)
+4. Relative imports
+
+### Naming Conventions
+
+- Interfaces: `PascalCase` (no `I` prefix)
+- Types: `PascalCase`
+- Enums: `PascalCase` with `PascalCase` members
+- Constants: `UPPER_SNAKE_CASE` for true constants
+- Functions/methods: `camelCase`
+- Files: `kebab-case`
+
+### Readonly by Default
+
+- Use `readonly` for properties that don't change
+- Use `as const` for literal types
+- Prefer immutable patterns
+
+### Null Safety
+
+- Use optional chaining (`?.`)
+- Use nullish coalescing (`??`)
+- Avoid non-null assertions (`!`) except when truly safe
+- Handle null/undefined explicitly
+
+</ANCHORRULE-CONSTITUTION-TYPESCRIPT>

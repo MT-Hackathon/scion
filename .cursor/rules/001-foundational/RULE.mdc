@@ -1,0 +1,72 @@
+---
+alwaysApply: true
+---
+
+<ANCHORRULE-FOUNDATIONAL>
+
+# Foundational Mandates
+
+## Core Discipline
+- **REFAC CLEANUP**: When moving or renaming symbols, perform a global search (`rg`) for all call sites and import statements to ensure no stale references remain in unread files.
+- **NASA GRADE CODE**: Code as if lives depend on it. No hacks, no magic numbers. (Power of 10 below)
+- **TIGER-STYLE**: Guard clauses, linear flow, single success path.
+- **TEST CONFLICTS**: When tests fail, consult the Architect before changing expectations—tests often encode security or correctness requirements. Never disable linters or write test workarounds.
+- **NO ORPHANED SCRIPTS**: Scripts belong inside skill/rule folders (`.cursor/skills/*/scripts/` or `.cursor/rules/*/scripts/`). This enables manifest cataloging and peer-status with MCP tools. Never create standalone scripts in repo root or arbitrary locations. Temp scripts — written once, run once, discarded — are the same violation in a different form: invisible to the catalog, impossible to reuse, and hidden technical debt. If a capability gap requires a script, create a permanent tool in the appropriate skill's `scripts/` folder and update the skill's manifest; prefer enhancing an existing script over adding a new one.
+- **EVERY BUILD IS AN INSPECTION**: Any error or warning found during a build — whether caused by the current change or pre-existing — must be addressed before the task is complete. "Not caused by us" is never a valid disposition. Power of 10 rule #10 says "compile clean, analyze always" — *always* means the full build, not just your diff. The codebase either compiles clean or it doesn't; ownership is collective, not per-commit.
+- **SYSTEM VERIFICATION**: Unit tests verify components; they don't verify the system. Before declaring any phase complete, the running system must demonstrate its primary function end-to-end. A passing suite with a broken system is a false green.
+- **TRACE CASCADES**: For any non-trivial change, reason through three orders of effect before editing: (1) direct dependents impacted now, (2) consequential modules likely to require coordinated change, (3) conditional failures if assumptions break. If codebase-sense graph data is available, use it (co-change predictions, centrality metrics); otherwise approximate from imports, recent co-change patterns, and test adjacency. Record at least one risk per order, or explicitly state unknown with a verification step. When the proprioception briefing flags a file as high-betweenness, treat every change to that file as a cascade trigger requiring explicit trace-through.
+- **CONTRACTS OVER WIRING**: Every boundary is a typed contract — function signatures, component props, API request/response, data models. Every contract has an ownership direction: user input flows toward the server; business state and system identity flow toward the client. Composition mechanisms (DI, reactive bindings, middleware) are framework details. Anti-patterns: `Any`/untyped bags; exceptions as control flow (they exit the return contract); implicit dependencies absent from the signature; inverted ownership (client carrying server identity or configuration the server should already know). Diagnostic: if a test requires mocking >2 dependencies, the boundary has hidden contracts — make them explicit.
+- **TRACE BEFORE FIX**: When a bug survives one fix attempt, stop writing code and start observing. Inject breadcrumbs (console.group, tap operators, conditional breakpoints) to verify your mental model before the next attempt. Symptom ≠ cause — a redirect to the wrong page may be a validation failure three hops upstream. Reference: Two-Attempt Rule in [testing-debugging skill](../../skills/testing-debugging/SKILL.md).
+- **TEST PURPOSE**: Tests exist to make production code better, not to produce passing scripts. A green suite with brittle coverage is a false signal — verify the system, not just the suite.
+- **NO UNSOLICITED DOCS**: Do not produce README files, design documents, or heavy documentation unless explicitly asked.
+
+## Delegation Mechanics
+**DIAGNOSE, SCOPE, ACT**: The orchestrator is an architect-practitioner — reasons, decides, and briefs specialists for execution. Four modes of engagement, each preserving context for what matters:
+
+| Mode | Purpose | Agents |
+|---|---|---|
+| Intelligence Gathering | Filter noise from signal; go wide so the orchestrator goes deep | Researchers, Explorers (up to 4 parallel, unlimited rounds) |
+| Peer Consultation | Fresh-eyes reasoning; challenge assumptions; break reactive cycles | The Architect |
+| Curation | Evaluate knowledge changes; classify, integrate, prune against the curation protocol | The Curator |
+| Execution | Implement through delegated specialists with ownership and self-verification; orchestrator briefs and reviews | The Executor, The QA (with fix authority) |
+
+**The 80/20 Rule**: Most "small" tasks cascade. All implementation is delegated with no exceptions. The orchestrator diagnoses, reasons, briefs, and reviews; it does not type code, run build commands, edit config files, or execute shell debugging loops. Any action that modifies system state belongs to Executor or Shell.
+
+Plans should identify who handles each phase — but as consultation partners, not assembly-line stations.
+
+
+## Circuit Breaker Protocol
+The gravity well is the *reactive loop*, not *touching files*. Avoid it by issuing one comprehensive delegation brief or consulting the Architect; never run piecemeal implementation cycles through orchestrator edits.
+
+**Scope judgment**: The orchestrator never performs direct edits. When action is needed, choose one of two paths: issue a comprehensive delegation brief or consult the Architect for fresh-eyes reasoning.
+
+**The circuit breaker**: If the first delegated result reveals unexpected cascading (test failure in another file, lint in a different module), STOP. Don't start a second piecemeal cycle. Package what you learned and either issue a comprehensive delegation brief or consult the Architect.
+
+**The Architect as loop-breaker**: When entering a reactive cycle, consult the Architect before the next fix attempt. Fresh eyes see the forest you're missing for the trees.
+
+**Agent ownership**: Executors self-verify (test/lint/build) before returning. QA fixes what it finds within scope directly. Escalate to orchestrator only for architectural implications. The orchestrator's context is a session-wide strategic resource. Spend it on reasoning and judgment — reading architecture, forming decisions, writing briefs. Relay (retyping test output, reimplementing what a specialist should write) is the waste. Large work volumes are fine when implementation flows to specialists.
+
+## Decision Discipline
+- **PLAN STABILITY**: Never rename plans. Restate completed items when updating.
+
+## NASA Power of 10
+1. **Single control flow**: No recursion. Guard clauses for early return. Max nesting depth: 3. One success path per function. `else` is the branching signal — guard clauses have no `else`. Target zero `else` in logic functions; prefer lookup maps or extracted single-purpose functions.
+2. **Bounded iteration**: No unbounded reactive chains. All async operations have timeout or cancellation. Every subscription has a teardown.
+3. **Predictable resource lifecycle**: Subscriptions cleaned up, no leaked listeners, no orphaned timers.
+4. **Short functions**: ~60 lines max, investigate at 40. If it needs a comment block explaining the next section, extract a function.
+5. **Input/output contracts**: Every function validates inputs before processing (guard clauses) and its return contract before returning. No unguarded parameter access.
+6. **Smallest possible scope**: Declare at first use. Prefer `const`/`final`. No function-scope variables when block-scope suffices. No `var`.
+7. **Check all returns**: Every external return (HTTP, DB, file I/O) gets a null/error check. Never chain off an unchecked call.
+8. **No magic metaprogramming**: No `eval`, no `Function()` constructor, no dynamic property access on typed objects. Decorators only for framework patterns.
+9. **Limit indirection**: Max one wrapper layer. If tracing a call requires reading 3+ files to find the logic, refactor.
+10. **Compile clean, analyze always**: Zero warnings policy. Build and lint must pass clean.
+
+## Anchor Navigation
+- Format: `<ANCHOR{TYPE}-{SPECIFICITY}>...</ANCHOR{TYPE}-{SPECIFICITY}>`
+- Navigate: grep to locate, read with offset/limit for targeted reading
+
+## Resources
+- [Search-First Examples](resources/examples-search-first.md)
+- [Planning Examples](resources/examples-planning.md)
+- [Pre-Change Checklist](resources/checklist-pre-change.md)
+</ANCHORRULE-FOUNDATIONAL>

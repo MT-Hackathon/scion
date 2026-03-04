@@ -1,0 +1,22 @@
+# Per-user temporal data
+*.db
+
+# Python artifacts
+__pycache__/
+*.pyc
+
+# Git internals
+.git/
+
+# Virtual environments
+.venv/
+venv/
+
+# IDE/editor local state
+.vscode/
+*.code-workspace
+
+# Content-level exclusions for rules 998 and 999 are handled by
+# push.py logic (not this file), because those exclusions operate
+# on sections within files, not on whole files.
+# See: .cursor/skills/rootstock/resources/curation-protocol.md

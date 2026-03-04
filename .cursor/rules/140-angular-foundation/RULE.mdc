@@ -1,0 +1,214 @@
+---
+description: "Angular component patterns, signal-based state, reactive forms, service orchestration, standalone components, and OnPush change detection. Use when writing or reviewing Angular components, services, or directives."
+globs: "**/*.component.ts,**/*.service.ts,**/*.directive.ts,**/*.pipe.ts,**/*.guard.ts,**/*.interceptor.ts,**/*.resolver.ts"
+alwaysApply: false
+---
+
+<ANCHORRULE-ANGULAR-FOUNDATION>
+
+# Angular Foundation
+
+## Table of Contents & Resources
+
+- [Core Concepts](#core-concepts)
+- [Examples: Component Patterns](resources/examples-component-patterns.md)
+- [Examples: Signal Patterns](resources/examples-signal-patterns.md)
+- [Examples: Service Orchestration](resources/examples-service-orchestration.md)
+- [Reference: Forbidden Patterns](resources/reference-forbidden-patterns.md)
+- [Checklist: Component Creation](resources/checklist-component-creation.md)
+- [Memory Management](#memory-management-mandated)
+- [Template Performance](#template-performance-mandated)
+
+## Core Concepts
+
+### Standalone Components (MANDATED)
+
+- All components, directives, and pipes are standalone by default in Angular 21
+- Do NOT set `standalone: true` in decorators (it's the default)
+- Import dependencies directly in the component's `imports` array
+- No NgModules for feature organization
+
+### Signals (MANDATED)
+
+- Use `signal()` for mutable state
+- Use `computed()` for derived state
+- Use `input()` instead of `@Input()` decorator
+- Use `output()` instead of `@Output()` decorator
+- NEVER use `mutate()` on signals; use `update()` or `set()`
+
+### Signal Encapsulation (MANDATED)
+
+In services, use the Private Writable / Public Readonly pattern:
+
+```typescript
+private readonly _state = signal<T>(initial);
+readonly state = this._state.asReadonly();
+```
+
+- Private mutable signal with underscore prefix
+- Public readonly accessor via `asReadonly()`
+- State mutations through dedicated methods with side-effect application
+- See `ThemeService` for canonical example
+
+### Observable vs Signal (Decision Guide)
+
+| Use Case | Use | Why |
+|----------|-----|-----|
+| HTTP responses | Observable | One-shot async, pipe operators (catchError, retry) |
+| User events needing operators | Observable | RxJS debounce, throttle, switchMap |
+| Component/service state | Signal | Synchronous, template-ready, auto change detection |
+| Derived/computed values | `computed()` | Auto-tracks dependencies |
+| Service state exposure | Signal (readonly) | Encapsulation pattern |
+
+**Pattern**: Services return `Observable` from HTTP → convert to Signal for state:
+
+```typescript
+load(): Observable<Item[]> {
+  return this.http.get<Item[]>('/api/items').pipe(
+    tap(items => this._items.set(items)),
+    catchError(err => { this._error.set(err); return EMPTY; })
+  );
+}
+```
+
+### Service Orchestration (MANDATED)
+
+Services follow a clear separation of concerns:
+
+- **Orchestration services** inject other services and compute derived signals
+- **Data services** handle HTTP and persistence
+- Core domain logic belongs in **pure functions** (see ThresholdService)
+- Avoid circular dependencies; keep orchestration separate from data
+
+```typescript
+@Injectable({providedIn: 'root'})
+export class NavigationService {
+  readonly profileService = inject(ProfileService);
+  readonly mobileDetectionService = inject(MobileDetectionService);
+  
+  readonly sidenavMode = computed(() => 
+    this.mobileDetectionService.isMobile() ? 'over' : 'side'
+  );
+}
+```
+
+### Feature Organization (MANDATED)
+
+Code follows the `core/` vs `features/` vs `shared/` separation:
+
+- **`src/app/core/`**: App-wide services, layout, interceptors, guards
+- **`src/app/shared/`**: Reusable components, models, utilities for cross-feature use
+- **`src/app/features/`**: Self-contained feature modules
+- **Path aliases**: `@core/*`, `@shared/*` for imports
+
+### Module Boundaries (MANDATED)
+
+Dependency direction: `core → shared → features`
+
+| Module | May Import From | May NOT Import From |
+|--------|-----------------|---------------------|
+| `core/` | Angular, third-party, `shared/` | `features/` (VIOLATION) |
+| `shared/` | Angular, third-party | `core/`, `features/` |
+| `features/` | Angular, third-party, `shared/`, `core/` | Other `features/` |
+
+Cross-feature communication uses `shared/` models, never direct feature imports.
+
+### Dependency Injection
+
+- Use `inject()` function over constructor injection
+- Services use `providedIn: 'root'` for singletons
+- Inject in class body: `readonly service = inject(MyService);`
+
+### Change Detection
+
+- Always set `changeDetection: ChangeDetectionStrategy.OnPush`
+- Signals automatically trigger change detection when read in templates
+
+### Memory Management (MANDATED)
+
+- **Subscription Cleanup**
+  - All explicit `.subscribe()` calls MUST use `.pipe(takeUntilDestroyed(this.destroyRef))` to prevent memory leaks
+  - Inject `DestroyRef` in components/services that subscribe: `private readonly destroyRef = inject(DestroyRef);`
+  - Prefer Signals over Observables for component state to avoid subscription management entirely
+- **Error Handling**
+  - All subscriptions MUST have an error handler: `.subscribe({ next: ..., error: (err) => ... })`
+  - Use the logger service for error reporting, not console.log
+
+### Template Performance (MANDATED)
+
+- **TrackBy in Loops**
+  - Every `@for` loop MUST include a unique `track` expression
+  - Use stable identifiers: `@for (item of items(); track item.id)`
+  - NEVER use `track $index` unless the collection is truly static and never reordered
+  - Bad: `@for (user of users(); track $index)` — causes full re-render on any change
+  - Good: `@for (user of users(); track user.id)` — only affected items re-render
+- **Avoid Method Calls in Templates**
+  - Do NOT call methods in template expressions: `{{ getTotal() }}` — recalculates every change detection
+  - Use computed signals instead: `readonly total = computed(() => this.calculateTotal());`
+  - Template: `{{ total() }}` — cached, only recalculates when dependencies change
+
+### Template Control Flow
+
+- Use `@if`, `@for`, `@switch` (built-in control flow)
+- NEVER use `*ngIf`, `*ngFor`, `*ngSwitch` structural directives
+- Use `@empty` block with `@for` for empty state
+
+### Bindings
+
+- Use `[class.active]="isActive()"` for class bindings
+- Use `[style.width.px]="width()"` for style bindings
+- NEVER use `ngClass` or `ngStyle` directives
+
+### Host Bindings
+
+- Use `host: {}` object in `@Component` or `@Directive` decorator
+- NEVER use `@HostBinding` or `@HostListener` decorators
+
+### Forms
+
+- Prefer Reactive Forms over Template-driven forms
+- Use `FormBuilder` with typed forms
+- Import `ReactiveFormsModule` in component imports
+
+### Images
+
+- Use `NgOptimizedImage` for all static images
+- Provide `width` and `height` attributes for LCP optimization
+
+### File Organization
+
+- Logic in `.ts` file
+- Styles in `.scss` file
+- Template in `.html` file (or inline for small components)
+- Follow kebab-case for file names, PascalCase for class names
+
+### Security Patterns (MANDATED)
+
+**No Sanitizer Bypass**:
+- NEVER use `bypassSecurityTrustHtml()`, `bypassSecurityTrustUrl()`, `bypassSecurityTrustResourceUrl()`, or `bypassSecurityTrustStyle()` without documented justification and code review
+- Angular's built-in sanitization is the security boundary — bypassing it creates XSS vectors
+- If bypass is genuinely needed (e.g., trusted server-rendered content), isolate in a dedicated pipe with a comment explaining why
+
+**No Unsafe DOM Binding**:
+- Prefer interpolation `{{ }}` or `[textContent]` over `[innerHTML]`
+- If `[innerHTML]` is necessary, Angular sanitizes by default — but never bind unsanitized user input
+- NEVER use `document.write()`, `eval()`, or direct DOM manipulation for content insertion
+
+**No Sensitive Data in State**:
+- Passwords, tokens, API keys, and PII must never be stored in writable signals, BehaviorSubjects, or component state
+- Use transiently in form submission handlers only — do not persist in reactive state
+- Okta manages token lifecycle; application code should not cache tokens in signals or stores
+- Only non-sensitive preferences (role code, theme) may persist in `localStorage`
+
+**Safe URL Construction**:
+- NEVER use `window.location.href = userInput` or `window.open(userInput)`
+- Use Angular `Router.navigate()` with validated route paths for internal navigation
+- For external URLs, validate against an allowlist before opening
+- Use `DomSanitizer.sanitize(SecurityContext.URL, value)` when URL source is untrusted
+
+**Error Response Handling**:
+- NEVER display raw backend error responses to users — they may contain internal details
+- Map HTTP status codes to user-friendly messages in interceptors or service error handlers
+- Pattern: `401` → "Session expired", `403` → "Permission denied", `5xx` → "Something went wrong"
+
+</ANCHORRULE-ANGULAR-FOUNDATION>

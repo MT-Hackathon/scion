@@ -1,0 +1,24 @@
+%% Data Flow Template
+%% Traces a request from user input through all layers and back.
+%% Replace placeholder names with actual components.
+
+flowchart LR
+    User([User]) --> Form[Form Input]
+    Form --> Validation{Client Validation}
+    Validation -->|Valid| HTTP[HTTP Request]
+    Validation -->|Invalid| ErrorUI[Error Display]
+
+    HTTP --> Interceptor[Auth Interceptor]
+    Interceptor --> Controller[REST Controller]
+    Controller --> Service[Service Layer]
+    Service --> Rules{Business Rules}
+    Rules -->|Pass| Repository[Repository]
+    Rules -->|Fail| ErrorResponse[Error Response]
+    Repository --> DB[(Database)]
+
+    DB --> Repository
+    Repository --> Service
+    Service --> Controller
+    Controller --> HTTP
+    HTTP --> UI[UI Update]
+    ErrorResponse --> HTTP

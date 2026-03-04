@@ -1,0 +1,20 @@
+%% C4 Context Diagram Template (approximated in Mermaid flowchart)
+%% Shows the system boundary, external actors, and integrations.
+%% Replace placeholders with actual system names.
+
+flowchart TB
+    subgraph boundary ["System Boundary"]
+        WebApp["Web Application<br/>(Frontend)"]
+        APIServer["API Server<br/>(Backend)"]
+        Database[(Database)]
+
+        WebApp --> APIServer
+        APIServer --> Database
+    end
+
+    User([End User]) --> WebApp
+    Admin([Administrator]) --> WebApp
+
+    AuthProvider[/"Identity Provider<br/>(SSO/OAuth)"/] --> APIServer
+    APIServer --> ExternalAPI[/"External System<br/>(Third-Party API)"/]
+    APIServer --> EmailService[/"Email Service<br/>(Notifications)"/]

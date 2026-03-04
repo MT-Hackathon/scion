@@ -1,0 +1,54 @@
+---
+description: "Entity-Component-System architecture for data pipeline processing: component prefixes, system composition, DataFrame storage patterns, and ECS anti-patterns. Use when working on pipeline nodes, ECS systems, or data processing architecture."
+globs: "*.py,*.rs"
+alwaysApply: false
+---
+
+<ANCHORRULE-ECS-ARCHITECTURE>
+
+# ECS Architecture Rule
+
+## Table of Contents & Resources
+- [Core Concepts](#core-concepts)
+- [Examples: ECS Patterns](resources/examples-ecs-patterns.md)
+- [Reference: DataFrame Storage](resources/reference-dataframe-storage.md)
+- [Cross-References](resources/cross-references.md)
+
+## Core Concepts
+
+### ECS Mandates
+- **Entities**: IDs only (no methods)
+- **Components**: Pure @dataclass, immutable, no logic
+- **Systems**: Pure functions (DataFrame → DataFrame)
+- **Resources**: Stateful objects; store IDs not instances
+- **Data-Oriented**: SoA over AoS, hot/cold split
+
+### DataFrame Storage (MANDATED)
+All ECS entity stores: Polars `DataFrame` (no dict/list/class)
+System signature: `def system_name(entity_store: pl.DataFrame) -> pl.DataFrame`
+
+### Multi-Store Systems
+- Systems may accept multiple DataFrames: `(entity_store, cache_store, other_store)`
+- External resources injected via `Optional[Resource] = None`
+- Return tuple when cache updated: `Tuple[pl.DataFrame, pl.DataFrame]`
+- Primary store always first in signature and return
+
+### DataFrame Patterns
+- Copy-on-write before modification
+- Guards: `if entity_store.is_empty(): return entity_store`, early return if columns missing
+- Vectorization only (no row loops)
+- Type-annotate all DataFrame params/returns
+
+### Cache DataFrame Pattern
+- Use a dedicated cache DataFrame, never globals or `@lru_cache`
+- Pass cache as explicit param+return: `(entity_store, cache_store) -> (updated_store, updated_cache)`
+- Keep cache separate from business data; no module-level dicts
+
+### Storage Decision
+- Polars: dense data (>100 entities, analytics)
+- esper: sparse, event-driven only
+
+### Prohibited
+Entity/component methods, system side effects, resource instances in DataFrames, global cache state, non-DataFrame storage, in-place mutation, row loops, missing guards
+
+</ANCHORRULE-ECS-ARCHITECTURE>

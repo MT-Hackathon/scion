@@ -1,0 +1,68 @@
+---
+description: "SQL schema design, FK indexing mandates, migration patterns, query optimization, and forbidden SQL patterns. Use when writing or reviewing SQL, migrations, or database schemas."
+globs: "*.sql"
+alwaysApply: false
+---
+
+<ANCHORRULE-CONSTITUTION-SQL>
+
+# SQL & Database Constitution
+
+## Table of Contents & Resources
+
+- [Core Design Principles](#core-design-principles)
+- [Data Type Mandates](#data-type-mandates)
+- [Constraint & Indexing Rules](#constraint--indexing-rules)
+- [Naming Conventions](#naming-conventions)
+- [Migration Discipline](#migration-discipline)
+- [Forbidden Patterns](#forbidden-patterns)
+- [Comprehensive Guide: PostgreSQL Design Skill](../../skills/postgresql-design/SKILL.md)
+
+## Core Design Principles
+
+- **MANDATED**: SQL migrations are the absolute source of truth for the schema, not JPA entities.
+- **Identity**: Use `BIGINT GENERATED ALWAYS AS IDENTITY` for primary keys.
+- **Nullability**: Columns are `NOT NULL` by default; explicitly justify all nullable columns.
+
+## Data Type Mandates
+
+| Requirement | Recommended Type | Rationale |
+|-------------|------------------|-----------|
+| **Timestamps** | `TIMESTAMPTZ` | Always include timezone awareness; never use `TIMESTAMP`. |
+| **Text** | `TEXT` | Preferred over `VARCHAR(n)` unless a hard domain limit exists. |
+| **Decimals** | `NUMERIC(p,s)` | Use for money and precision; never use `MONEY` or `FLOAT`. |
+| **Integers** | `BIGINT` | Standard for IDs and large counters. |
+
+## Constraint & Indexing Rules
+
+- **Naming**: MANDATED explicit names for all constraints (`fk_*`, `uk_*`, `ck_*`, `pk_*`).
+- **Foreign Keys**: Every FK must be explicitly named and indexed. PostgreSQL does NOT auto-index FKs.
+- **Domain Validation**: Use `CHECK` constraints for value ranges and allowed enums at the DB level.
+- **Uniqueness**: Enforce business uniqueness at the database level, not just in application code.
+
+## Naming Conventions
+
+- **Identifiers**: `snake_case` for all tables, columns, and constraints.
+- **Constraints**:
+  - Primary Key: `pk_{table_name}`
+  - Foreign Key: `fk_{table}_{column}`
+  - Unique: `uk_{table}_{column}`
+  - Check: `ck_{table}_{name}`
+- **Indexes**: `idx_{table}_{column}`
+
+## Migration Discipline
+
+- **Atomic**: One migration should do one thing (e.g., create table + index FKs).
+- **Immutable**: Never modify a migration that has already been merged/deployed.
+- **Self-Contained**: Migrations must include all necessary indexes and constraints.
+
+## Forbidden Patterns
+
+- **AVOID**: `SERIAL` (use `IDENTITY` instead).
+- **AVOID**: `CHAR(n)`, `VARCHAR(n)` (use `TEXT` unless hard limit required).
+- **FORBIDDEN**: `TIMESTAMP` without timezone (always use `TIMESTAMPTZ`).
+- **FORBIDDEN**: `MONEY` type (use `NUMERIC` for precision).
+- **FORBIDDEN**: Adding a Foreign Key without a corresponding index.
+- **FORBIDDEN**: Relying on JPA `ddl-auto` for production-grade schema management.
+
+</ANCHORRULE-CONSTITUTION-SQL>
