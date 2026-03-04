@@ -6,9 +6,11 @@ alwaysApply: true
 
 # Rootstock System Invariants
 
-Knowledge curation and distribution system for shared `.cursor` and `.claude` AI development environments — Tauri desktop app (Rust + SvelteKit), CLI (`graft-cli`), Rootstock web app, and AI skill. Core sync logic is converging into the Rust `graft-core` crate used by desktop and CLI, with `app/backend/` retained as a reference implementation.
+Knowledge curation and distribution system for shared `.cursor` and `.claude` AI development environments — Tauri desktop app (Rust + SvelteKit), CLI (`graft-cli`), and AI skill. Core sync logic lives in the Rust `graft-core` crate used by both the desktop app and CLI.
 
-**Stack**: Desktop: Rust/Tauri 2.0 | Frontend: SvelteKit/Svelte 5 (adapter-static) | CLI: Rust/clap | Reference backend: Python/FastAPI | Governance: `.cursor/` in this repo
+**Hub**: The `scion` repo (`git@gitlab.com:cdo-office/scion.git`, public mirror at `github.com/MT-Hackathon/scion`) is the canonical knowledge store — it holds only `.cursor/` content, `graft-policy.json`, and `.rootstockignore`. The rootstock app repo connects to scion as a spoke project, just like every other project. `main` branch is the golden image; contributor branches (`contributor/{contributor}/{project_id}`) hold unreviewed submissions.
+
+**Stack**: Desktop: Rust/Tauri 2.0 | Frontend: SvelteKit/Svelte 5 (adapter-static) | CLI: Rust/clap | Governance: scion repo's `.cursor/`
 
 ### The 9 Invariants
 
