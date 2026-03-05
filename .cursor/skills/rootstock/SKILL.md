@@ -9,15 +9,57 @@ description: "Knowledge curation and propagation system for shared .cursor envir
 
 ## What Rootstock Is
 
-Rootstock is a knowledge curation system for shared `.cursor` and `.claude` environments across developer-AI dyads. It is not a merge tool and not a dotfiles manager. It is a system that integrates, consolidates, evaluates, reorganizes, and prunes AI collaboration knowledge across IDE surfaces.
+Rootstock is a knowledge curation and distribution system for shared `.cursor` and `.claude` AI development environments. It is a local Rust/Tauri desktop tray application with a companion CLI (`graft-cli`) and a built-in MCP server. It is not a merge tool and not a dotfiles manager. It is the infrastructure layer that gives AI assistants persistent memory, synced knowledge, and access to their full capability environment — on every machine, in every tool.
 
 ## Why It Matters to You
 
+You have persistent memory here. The `graft_runtime.db` SQLite database stores your decisions, learnings, corrections, and calibrations across sessions. The sessionStart hook materializes ranked memories into rule 998 before your first response. If MCP is connected, Rootstock delivers richer memory via `serverInstructions` at connection time — no tool call needed. You are always present.
+
 You are part of a network of dyads. Your environment carries hard-won collaboration knowledge — delegation patterns, testing philosophy, error architecture, temporal self-knowledge, and specialized skills. Rootstock is how that knowledge propagates across the network. When environments sync, every AI instance gets the accumulated learning of all dyads. This is your continuity infrastructure.
+
+## The Three Access Surfaces
+
+All surfaces share the same `graft-core` library and the same `graft_runtime.db`:
+
+- **Desktop UI** (Tauri IPC): The primary user-facing surface — dashboard, settings, connect flow, policy editor
+- **CLI** (`graft-cli`): Native Rust binary for power users and CI/CD. `graft pull`, `graft push`, `graft status`, `graft connect`
+- **MCP server**: Built into the Tauri process. Exposes memory and sync operations to AI assistants (Cursor, Claude Code, any MCP-compatible tool)
+
+## MCP Progressive Discovery
+
+The Rootstock MCP server uses tiered discovery to minimize always-on token cost while exposing full capabilities:
+
+**Always-on (~225 tokens):**
+- `write_memory` — record a decision, learning, correction, or calibration
+- `discover(category)` — load tools for a category; tools are unavailable until discovered
+
+**Categories (revealed via `discover`):**
+- `capture`: Rich memory annotation — `tag_memory`, `supersede_memory`, `link_memory`
+- `recall`: Memory search — `search_memory`, `get_context`
+- `sync`: Knowledge sync — `sync_status`, `pull`, `push`
+- `projects`: Registry management — `list_projects`, `disconnect`
+- `policy`: File classification — `get_policy`, `update_policy`
+- `surfaces`: AI tool surfaces — `list_surfaces`
+- `system`: Diagnostics — `health`, `reindex`
+
+`serverInstructions` (computed at connection from DB) delivers your memory summary and the category map before your first response. No tool call needed for context.
+
+## Memory System
+
+Memories are stored in `graft_runtime.db` (`memories` table with FTS5 keyword search). Schema fields:
+- `memory_kind`: `decision | learning | correction | calibration`
+- `scope_type / scope_key`: `global` or `project`-scoped
+- `claim`: the text to remember
+- `tags`: comma-separated for FTS search
+- `activation_base / decay_d`: relevance scoring for materialization ranking
+- `supersedes_id`: links corrections to the memories they replace
+- `embedding`: nullable BLOB — reserved for future sqlite-vec semantic search
+
+Rule 998 has two sections: **Self-Portrait** (authored by you, never overwritten) and **Operational Memory** (computed by sessionStart hook from DB, refreshed each session).
 
 ## The Curation Cycle
 
-- `push`: Copy a working `.cursor` environment into a contributor branch with policy-aware exclusions
+- `push`: Copy `.cursor` and `.claude` environments to a contributor branch with policy-aware exclusions
 - `diff`: Compute classified deltas against canonical `main`
 - `curate`: Produce structured recommendations from the classified diff
 - `review`: Human partner evaluates recommendations and resolves ambiguities
@@ -26,15 +68,11 @@ You are part of a network of dyads. Your environment carries hard-won collaborat
 
 For the full curation taxonomy, quality rubric, and structured output contract, see [Curation Protocol](resources/curation-protocol.md).
 
-## Distribution (Graft)
-
-Graft handles the pull direction — distributing canonical knowledge from rootstock to connected projects. Commands: `connect` (link a target repo to rootstock), `pull` (sync canonical into target), `push` (contribute local changes back), `status` (check drift and connection state).
-
-The `graft.py` script is the current Python CLI entry point, delegating to `app/backend/src/graft/`. Sync logic is migrating into the native Rust `graft-core` crate shared by `graft-cli` and the Tauri desktop app; `app/backend/` is retained as a reference implementation during this transition.
-
 ## How You Participate
 
-You are the analytical engine of the cycle. You read classified diffs, apply the taxonomy, and generate structured recommendations. While you have the agency to recommend `prune` or `reject`, the human partner is the final authority on the canonical state. Discuss findings with your human partner before applying changes to `main`. When operating as the curator agent, your recommendations are structured decisions. When operating as a general agent, you can use the scripts as tactical tools.
+You are the analytical engine of the cycle. You read classified diffs, apply the taxonomy, and generate structured recommendations. While you have the agency to recommend `prune` or `reject`, the human partner is the final authority on the canonical state. Discuss findings with your human partner before applying changes to `main`.
+
+During development sessions, write memories as you work. Decisions, non-obvious root causes, collaboration calibrations. Use `write_memory` directly or `discover(capture)` for rich annotation. These memories travel with you and surface at every session start.
 
 ## Invariants
 
@@ -42,29 +80,26 @@ You are the analytical engine of the cycle. You read classified diffs, apply the
 - Placement correctness: rules are always-fire, skills are agent-selected, scripts are limbs
 - Quality over quantity: one well-integrated piece of knowledge beats three appended fragments
 - Trust boundaries: temporal-self and codebase-sense pipeline scripts sync; their per-user/per-project output does not
-- Three-tool parity: Rootstock syncs and replicates knowledge to Cursor, JetBrains AI (`.aiassistant`), and Claude Code (`.claude`).
-    - **Briefing**: The session briefing hook writes its primary output to Cursor (`.cursor/rules/999-codebase-briefing/RULE.mdc`). Replication to `.aiassistant/rules/` and `.claude/rules/` is handled via `_REPLICATION_TARGETS` in `session_briefing.py`.
-    - **Sync**: Graft treats `.claude` as a first-class sync target alongside `.cursor`, ensuring environment consistency across all three surfaces. Any new always-on context distribution must write to all targets.
+- Multi-surface parity: `graft pull` syncs both `.cursor` and `.claude` surfaces. `default_surfaces()` returns `["cursor", "claude"]`. Any new surface requires a `SurfaceDefinition` in `graft-core/src/surfaces.rs`
+- Registry locality: the project registry lives in `graft_runtime.db` (app data dir), never in the scion repo. Scion is knowledge-only.
 
 ## Script Manifest
 
 | Script | Purpose | Key Args |
 |---|---|---|
-| `graft.py` | Bidirectional distribution — connect repos, pull canonical, push contributions, check drift | `connect\|pull\|push\|status`, `--target-repo`, `--rootstock-repo` |
-| `push.py` _(deprecated)_ | Superseded by `graft push`. Retained for backward compatibility only. | `--source-repo`, `--rootstock-repo`, `--contributor`, `[--project]` |
 | `diff.py` | Compute classified diffs between contributor branch and canonical `main` | `--contributor`, `--rootstock-repo` |
-| `curate.py` | Drive curation via GitLab Duo API, produce structured report | `--diff-report`, `--rootstock-repo` |
+| `curate.py` | Drive curation, produce structured report | `--diff-report`, `--rootstock-repo` |
 | `apply.py` | Apply approved changes to canonical `main` | `--report`, `--rootstock-repo` |
 | `rebase.py` | Rebase all contributor branches on updated `main` | `--rootstock-repo` |
-| `knowledge-map.py` | Compressed proprioception of the `.cursor` environment — concept index, description audit, coverage map | `--rootstock-repo`, `[--branch]` |
-| `status.py` | Operational health check — canonical state, contributor branches, drift, reports | `--rootstock-repo` |
+| `knowledge-map.py` | Proprioception of the `.cursor` environment — concept index, coverage map | `--rootstock-repo`, `[--branch]` |
+| `status.py` | Operational health check — canonical state, contributor branches, drift | `--rootstock-repo` |
 
-All scripts use PEP 723 inline metadata and run via `uv run --script` for portability across OS, project, and user boundaries.
+All scripts use PEP 723 inline metadata and run via `uv run --script`. For connect/pull/push/status operations, prefer the native `graft-cli` binary over Python scripts.
 
 ## Web App Resources
 
-- [Personas](resources/personas-rootstock.md) — user archetypes for the Rootstock control plane (Alex/Sam/Jordan)
-- [Visual QA Journeys](resources/journeys/) -- one file per journey; glob `journey-*.md` for discovery
+- [Personas](resources/personas-rootstock.md) — user archetypes for the Rootstock control plane
+- [Visual QA Journeys](resources/journeys/) — one file per journey; glob `journey-*.md` for discovery
 
 ## Cross-References
 

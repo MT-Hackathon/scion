@@ -6,8 +6,12 @@
 from __future__ import annotations
 
 import json
+import os
+import platform
+import sqlite3
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -113,34 +117,140 @@ def _write_tool_copies(briefing_text: str) -> None:
                 _log(f"Could not write codebase-briefing to {target}: {exc}")
 
 
+_MEMORY_START = "<!-- ROOTSTOCK:MEMORY:START -->"
+_MEMORY_END = "<!-- ROOTSTOCK:MEMORY:END -->"
+
+
+def _get_graft_db_path() -> Path | None:
+    """Locate graft_runtime.db in the platform-appropriate app data directory."""
+    system = platform.system()
+    if system == "Windows":
+        base = os.environ.get("APPDATA", "")
+    elif system == "Darwin":
+        base = os.path.expanduser("~/Library/Application Support")
+    else:
+        base = os.environ.get("XDG_DATA_HOME", "") or os.path.expanduser("~/.local/share")
+    if not base:
+        return None
+    db_path = Path(base) / "rootstock" / "graft_runtime.db"
+    return db_path if db_path.exists() else None
+
+
+def _query_memories(db_path: Path) -> list[tuple[str, str, str | None]]:
+    """Return top-ranked active memories as (memory_kind, claim, project_id) tuples."""
+    conn = sqlite3.connect(str(db_path))
+    try:
+        cursor = conn.execute(
+            """
+            SELECT memory_kind, claim, project_id
+            FROM memories
+            WHERE status = 'active'
+              AND supersedes_id IS NULL
+            ORDER BY (activation_base * 0.7 + evidence_count * 0.3) DESC
+            LIMIT 10
+            """
+        )
+        return [(row[0], row[1], row[2]) for row in cursor.fetchall()]
+    finally:
+        conn.close()
+
+
+def _format_memory_section(rows: list[tuple[str, str, str | None]]) -> str:
+    """Build the full ROOTSTOCK:MEMORY block string from queried rows."""
+    if not rows:
+        return (
+            f"{_MEMORY_START}\n"
+            "*No memories yet — use write_memory via Rootstock MCP to record decisions and learnings.*\n"
+            f"{_MEMORY_END}"
+        )
+    lines: list[str] = [
+        _MEMORY_START,
+        "*Operational memory from graft_runtime.db — refreshed each session*",
+        "",
+    ]
+    for memory_kind, claim, project_id in rows:
+        entry = f"**[{memory_kind}]** {claim}"
+        if project_id:
+            entry += f" *({project_id})*"
+        lines.append(entry)
+    lines.append("")
+    lines.append(_MEMORY_END)
+    return "\n".join(lines)
+
+
+def _update_memory_rule(workspace_path: Path, new_section: str) -> None:
+    """Atomically replace the operational memory block in 998-temporal-self/RULE.mdc."""
+    rule_path = workspace_path / ".cursor" / "rules" / "998-temporal-self" / "RULE.mdc"
+    if not rule_path.exists():
+        _log("[rootstock:memory] 998-temporal-self/RULE.mdc not found, skipping")
+        return
+
+    content = rule_path.read_text(encoding="utf-8")
+    start_idx = content.find(_MEMORY_START)
+    end_idx = content.find(_MEMORY_END)
+
+    if start_idx == -1 or end_idx == -1:
+        _log("[rootstock:memory] memory markers not found in RULE.mdc, skipping")
+        return
+
+    end_idx += len(_MEMORY_END)
+    updated = content[:start_idx] + new_section + content[end_idx:]
+
+    tmp_fd, tmp_path = tempfile.mkstemp(dir=rule_path.parent, suffix=".tmp")
+    try:
+        with os.fdopen(tmp_fd, "w", encoding="utf-8") as fh:
+            fh.write(updated)
+        os.replace(tmp_path, rule_path)
+    except Exception:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
+
+
+def _materialize_memories(workspace_path: Path) -> None:
+    """Query graft_runtime.db and write operational memories into the 998 rule file."""
+    try:
+        db_path = _get_graft_db_path()
+        if db_path is None:
+            _log("[rootstock:memory] graft_runtime.db not found, writing empty section")
+            rows: list[tuple[str, str, str | None]] = []
+        else:
+            rows = _query_memories(db_path)
+        section = _format_memory_section(rows)
+        _update_memory_rule(workspace_path, section)
+    except Exception as exc:
+        _log(f"[rootstock:memory] error during memory materialization: {exc}")
+
+
 def main() -> int:
     """Bridge plain-text briefing output to Cursor hook JSON and persist as rule."""
     try:
         if not BRIEFING_SCRIPT.exists():
             _log(f"briefing script not found: {BRIEFING_SCRIPT}")
-            return 0
+        else:
+            try:
+                result = subprocess.run(
+                    [
+                        "uv",
+                        "run",
+                        str(BRIEFING_SCRIPT),
+                        str(WORKSPACE_PATH),
+                        "--this-repo-only",
+                        "--max-lines",
+                        "120",
+                    ],
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                )
+                _write_rule_file(result.stdout)
+                _write_tool_copies(result.stdout)
+            except Exception as exc:
+                _log(f"briefing subprocess failed: {exc}")
 
-        try:
-            result = subprocess.run(
-                [
-                    "uv",
-                    "run",
-                    str(BRIEFING_SCRIPT),
-                    str(WORKSPACE_PATH),
-                    "--this-repo-only",
-                    "--max-lines",
-                    "120",
-                ],
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-        except Exception as exc:
-            _log(f"briefing subprocess failed: {exc}")
-            return 0
-
-        _write_rule_file(result.stdout)
-        _write_tool_copies(result.stdout)
+        _materialize_memories(WORKSPACE_PATH)
         _emit({})
         return 0
     except Exception as exc:  # pragma: no cover - hook must never block session creation

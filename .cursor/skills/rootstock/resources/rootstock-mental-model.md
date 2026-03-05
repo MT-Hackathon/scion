@@ -74,17 +74,24 @@ network benefits from the latest learnings.
   `graft pull` will overwrite it. This "forced alignment" ensures that the
   network does not fragment into slightly-different, incompatible versions of
   the same knowledge.
-- **The Three-File Config Model**:
+- **The Config Model**:
     - `.graft.json`: The "Identity Card." Committed to the project repo. It
       contains the project's unique UUID, its name, and a dictionary of template
       variables used to customize canonical rules for the local context.
     - `.graft.user.json`: The "Local Map." Gitignored. It stores the filesystem
-      path to the local Rootstock repo and the developer's contributor ID. This
+      path to the local scion repo and the developer's contributor ID. This
       allows different developers to have different local folder structures while
       pointing to the same canonical source.
     - `.graft.state.json`: The "Journal." Gitignored. It tracks the last-synced
       commit hash and file-level checksums to detect "unauthorized" local drift.
       It acts as the high-water mark for synchronization.
+    - `graft_runtime.db`: The "Runtime Layer." A local SQLite database in the
+      OS data directory, shared across the Desktop app and CLI via WAL-mode
+      SQLite. It stores the project registry (replacing `.graft.registry.json`
+      in the scion repo), tray configuration, auto-push debounce timestamps, and
+      the AI memory layer. Machine-owned, never committed to git. Note: the scion
+      repo no longer holds any project membership data — the registry is
+      exclusively local.
 
 ## 4. File Classification Model
 Not all files in a `.cursor` environment have the same lifecycle. Rootstock
@@ -161,14 +168,17 @@ graph TD
     end
 
     subgraph spoke_rootstock [Rootstock App]
-        R1["App code (Rust/SvelteKit)"]
-        R2[".cursor/ (synced from scion)"]
+        R1["App code (Rust/Tauri)"]
+        R2[".cursor/ .claude/ (synced)"]
+        DB1[("graft_runtime.db")]
+        MCP["MCP Server (--mcp flag)"]
     end
 
     subgraph spoke_project [Any Connected Project]
         P1["Project Context (998/999)"]
         P2["Local Rules (200+)"]
-        P3[".cursor/ (synced from scion)"]
+        P3[".cursor/ .claude/ (synced)"]
+        DB2[("graft_runtime.db")]
     end
 
     subgraph contributor [Contributor Branches]
@@ -180,6 +190,7 @@ graph TD
     spoke_project -- "graft push" --> contributor
     scion_hub -- "graft pull" --> spoke_rootstock
     scion_hub -- "graft pull" --> spoke_project
+    spoke_rootstock -- "MCP protocol" --> MCP
     contributor -- "curation service (Phase B)" --> scion_hub
 ```
 
@@ -193,9 +204,11 @@ graph TD
 | **Drifted (Outbound)** | The local project has "un-pushed" knowledge that has not been curated. A `graft push` is recommended. |
 | **Synced** | The local environment perfectly reflects the canonical intent. No changes are pending in either direction. |
 
-## 9. The Three Surfaces of Engagement
+## 9. The Four Surfaces of Engagement
 Rootstock logic is encapsulated in the Rust `graft-core` crate and exposed
-through three distinct interfaces.
+through four distinct interfaces. The governing design principle: *files for
+tools that read files; MCP for tools that speak MCP; API for tools that speak
+API. Same knowledge, multiple projections.*
 
 1.  **The Desktop App (Tauri 2.0)**: The primary user-facing surface. It wraps
     the SvelteKit UI in an installable desktop shell, supports system tray
@@ -209,19 +222,31 @@ through three distinct interfaces.
     about the curation lifecycle, execute `graft` commands, and self-correct
     when it detects that its environment is out of sync. It makes the system
     self-healing.
+4.  **The MCP Server**: The "Protocol Layer." When launched with the `--mcp`
+    flag, the Desktop app exposes a built-in MCP server with 17 tools across 6
+    progressively discoverable categories. It delivers the same scion knowledge
+    as the file-based surfaces but through the Model Context Protocol — enabling
+    any MCP-compatible AI tool (Claude, Cursor, etc.) to query skills, push
+    memories, run pull/push, and receive a personalized memory summary at
+    connection time via `serverInstructions`. No file reads required.
+
+**Surface extensibility**: `surfaces.rs` is the architectural seam that makes
+delivery pluggable. Future surfaces (`.codex/`, Claude plugins, API projections)
+register a `SurfaceDefinition` — same scion knowledge, new projection format.
 
 ## 10. Phased Architecture
 The Rootstock system is designed to evolve in three distinct phases as it
 transitions from a single-user tool to a collective intelligence platform.
 
-### Phase A: Knowledge Convergence (Current)
-- **State**: Local instances sharing the same git remote.
+### Phase A: Knowledge Convergence (Complete — Mar 2026)
+- **Runtime**: Rust/Tauri 2.0 desktop app and native `graft-cli` binary — fully operational.
+- **SQLite Runtime Layer**: `graft_runtime.db` stores the project registry (replacing `.graft.registry.json` in the scion repo), tray configuration, auto-push debounce, and the AI memory layer.
+- **Multi-surface Sync**: `.cursor/` and `.claude/` sync are both active. `surfaces.rs` is the extensibility point for future surfaces.
+- **Project Lifecycle**: Full support — connect, sync (pull/push), and disconnect.
+- **MCP Server**: 17 tools across 6 progressively discoverable categories, with AI memory delivered via `serverInstructions` at connection time.
+- **AI Persistent Memory**: `memories` and `activations` tables with FTS5 full-text search; `sessionStart` hook writes ranked memories into Rule 998's operational memory section.
 - **Identity**: Lightweight contributor identity (name string in `.graft.user.json`).
-- **Curation**: Assisted by the Curator skill in Cursor.
-- **Runtime**: Rust port in progress — desktop runtime is moving to Tauri 2.0,
-  and the CLI is transitioning to a native Rust binary (`graft-cli`) rather
-  than a Python script.
-- **Support**: `.cursor` sync is operational; `.claude` support is planned.
+- **Curation**: Assisted by the Curator skill in Cursor (human-in-the-loop; autonomous curation is Phase B).
 
 ### Phase B: Centralized Curation (Near)
 - **State**: Central hosted instance for multi-repo management.
@@ -260,12 +285,49 @@ organizes it into clear functional zones:
 
 ## 12. Glossary of Terms
 - **Canonical**: The authoritative, curated state of the knowledge base.
-- **Scion**: The canonical knowledge repository. In arboriculture, the scion is the productive cutting — selected for quality, grafted onto rootstock to grow. In this system, the scion repo carries the knowledge (rules, skills, agents) that determines how the AI behaves. It is a separate repo from the rootstock application code.
+- **Scion**: The canonical knowledge repository. Carries only knowledge artifacts — rules, skills, agents, `graft-policy.json`. Project registry data is local to each machine in `graft_runtime.db`; the scion repo holds no project membership data. In arboriculture, the scion is the productive cutting — selected for quality, grafted onto rootstock to grow.
 - **Rootstock**: The platform — the application, the sync engine, the desktop app. Not the knowledge itself.
 - **Graft**: The mechanism of distribution from the hub to the spokes. Also the CLI and sync library name.
+- **`graft_runtime.db`**: The local SQLite database that serves as the runtime layer for the Rootstock app and CLI. Stores: project registry, tray configuration, auto-push debounce, and the AI memory layer. Located in the OS data directory. Never committed to git. Accessed concurrently by CLI and Desktop via WAL-mode SQLite.
+- **MCP Surface**: The built-in MCP server activated by the `--mcp` flag. One of four surfaces through which Rootstock knowledge is delivered.
+- **Memory Layer**: The AI persistent memory system embedded in `graft_runtime.db`. Carries personal, session-continuity knowledge distinct from the shared rules and skills in the scion repo. See Section 13.
 - **Drift**: The delta between a local environment and the canonical state.
 - **Curation Rubric**: The set of quality standards used to evaluate new knowledge.
 - **Token Budget**: The limit on context size that dictates how much knowledge can be active at once.
 - **Dyad**: The collaborative pair of one human developer and one AI instance.
 - **Inbound Drift**: Changes available in canonical (scion `main`) that are not yet local.
 - **Outbound Drift**: Local changes that have not yet been pushed to a scion contributor branch.
+
+## 13. AI Memory Layer
+Rootstock embeds a persistent AI memory system directly into `graft_runtime.db`.
+Unlike rules and skills — which carry *shared* knowledge to all dyads — the
+memory layer carries *personal* knowledge specific to this AI instance, this
+machine, and this user relationship.
+
+The memory layer has three components:
+
+1.  **Storage**: The `memories` table holds claims classified by kind
+    (observation, decision, pattern, etc.), tagged for retrieval, and ranked by
+    activation score. The `memory_fts` virtual table provides FTS5 full-text
+    search. The `memory_links` table records associative relationships between
+    memories. Foreign key enforcement and WAL-mode SQLite ensure consistency
+    across concurrent writers.
+
+2.  **Capture**: The MCP `write_memory` tool is the primary capture path when
+    the MCP server is active. Rule 998 (`temporal-self`) instructs the AI to
+    write memories at session end regardless. The `sessionStart` hook serves as
+    a supplementary path for structured session-level capture.
+
+3.  **Delivery — a "no wrong door" cascade**:
+    - **MCP active**: `serverInstructions` inject a ranked memory summary at
+      connection time — always on, no tool call required, available immediately
+      in the first message.
+    - **MCP absent**: The `sessionStart` hook queries `graft_runtime.db` and
+      writes ranked memories into Rule 998's `<!-- ROOTSTOCK:MEMORY:START -->`
+      section before the session begins.
+    - **Baseline**: Rule 998 always carries the manually authored self-portrait
+      as the floor — present even with no hook and no MCP.
+
+The cascade ensures memory is always present at session start. The MCP path is
+richer (dynamic, queryable, updatable mid-session); the file path is always
+available as a fallback; Rule 998 is the unconditional floor.

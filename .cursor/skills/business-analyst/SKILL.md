@@ -1,6 +1,6 @@
 ---
 name: business-analyst
-description: "Provides stakeholder analysis, requirements elicitation, acceptance criteria authoring, gap analysis, discovery workflows, and specification clarification. Use when defining user journeys, personas, or stakeholder needs, clarifying behavioral contracts before delegation, prioritizing a backlog by value vs. effort, briefing specialists on the 'why', or leading a design or discovery session. DO NOT use for feature governance (see product-management) or implementation decomposition (see planning)."
+description: "Provides stakeholder analysis, requirements elicitation, acceptance criteria authoring, gap analysis, discovery workflows, specification clarification, and issue backlog curation. Use when defining user journeys, personas, or stakeholder needs, clarifying behavioral contracts before delegation, prioritizing a backlog by value vs. effort, briefing specialists on the 'why', leading a design or discovery session, triaging GitLab issues for noise vs. signal, closing resolved/duplicate issues, or refining issue quality. DO NOT use for feature governance (see product-management) or implementation decomposition (see planning)."
 ---
 
 <ANCHORSKILL-BUSINESS-ANALYST>
@@ -53,12 +53,20 @@ Define the **Minimum Viable Experience (MVE)**. What is the smallest set of feat
 - [Specification Completeness Guide](resources/guide-specification-completeness.md) — Pattern-organized anti-ambiguity checklist
 - [Contract-First Clarification](resources/guide-contract-first-clarification.md) — Conversational protocol for locking behavioral contracts
 - [Tag Taxonomy Guide](resources/guide-tag-taxonomy.md) — Label namespacing and anti-churn rules
+- [Issue Curation Guide](resources/guide-issue-curation.md) — Triage workflow, quality standards, and duplicate detection for issue backlog curation
+
+## Issue Curation
+
+Issue curation is BA work: maintaining a backlog where every open issue is a real, actionable signal — not noise, not a duplicate, not already completed. Triage dispositions, quality standards, duplicate detection patterns, and intentional scaffolding guidance are in the [Issue Curation Guide](resources/guide-issue-curation.md). Script invocations use the [git-workflows skill](../git-workflows/SKILL.md).
+
+---
 
 ## Cross-References
 
 - [Product Management Skill](../product-management/SKILL.md) — Downstream feature governance and traceability
 - [Planning Skill](../planning/SKILL.md) — Implementation decomposition and delegation
 - [Delegation Skill](../delegation/SKILL.md) — Using business analysis to inform specialist briefs
+- [Git Workflows Skill](../git-workflows/SKILL.md) — Issue, MR, and label management scripts
 - [The Architect Agent](../../agents/architect.md) — Technical design peer
 - [Visual QA Agent](../../agents/visual-qa.md) — Executes interaction scripts derived from journey maps
 

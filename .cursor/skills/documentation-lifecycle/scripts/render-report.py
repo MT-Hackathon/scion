@@ -229,7 +229,7 @@ p { margin:.35rem 0; white-space: pre-wrap; }
     for section in report["sections"]:
         heading = html.escape(str(section.get("heading") or "Section"))
         section_type = section["type"]
-        body = section_renderers[section_type](section)
+        body = section_renderers.get(section_type, html_list)(section)
         sections_html.append(f"<section><h2>{heading}</h2>{body}</section>")
     return (
         "<!doctype html><html><head><meta charset='utf-8'>"

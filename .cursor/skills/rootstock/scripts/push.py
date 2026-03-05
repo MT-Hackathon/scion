@@ -403,7 +403,7 @@ def commit_and_push(
     commit_message = f"push: {contributor} environment sync {iso_date}"
     run_git(
         repo_path=repo_path,
-        args=["commit", "-m", commit_message],
+        args=["commit", "-m", commit_message, "--", CURSOR_DIRNAME],
         verbose=verbose,
     )
     run_git(
