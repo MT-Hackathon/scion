@@ -225,6 +225,9 @@ cd app/frontend && npm test -- --run
 - Container query vs ResizeObserver for mode switching — research needed for Tailwind 4 + SvelteKit best practice.
 - Whether `@container` can drive Svelte reactive state or needs a JS bridge.
 
+**UX finding from stability walk — push/pull naming ambiguity**:
+In the dashboard drawer, "Sync from Scion" = pull, "Push Now" = push to contributor branch. But when the user sees "Pull Preview: 513 files will be copied," it's unclear which direction files are moving. "Push" and "Pull" are git-centric terms that don't map to the user's mental model of "update my project" vs "share my changes." Consider renaming to directional labels: "Update from Scion" / "Contribute to Scion" or "Download" / "Upload" or similar. The action buttons in the drawer ("Sync from Scion" is better than "Pull") and the stat label ("Drift" is ambiguous — drift from what, in which direction?) need a naming pass. This is a UX task, not a code task — the buttons work, the words don't.
+
 **Related work**:
 - Telemetry instrumentation (Rust `tracing` crate + frontend wrapper) — issue filed separately. Pattern settled: instrument freely, `tracing` with no subscriber is zero-cost (one atomic load). No `max_level_release` — desktop app benefits from being able to attach a subscriber without recompile.
 - Issue #70 (Learning onboarding) — MasterDetailLayout is a prerequisite for good onboarding UX.

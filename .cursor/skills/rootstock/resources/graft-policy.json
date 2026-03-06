@@ -32,7 +32,8 @@
     },
     "ignore": {
       "description": "Never touch. Not part of distribution.",
-      "files": [".env", "worktrees.json"]
+      "files": [".env", "worktrees.json"],
+      "patterns": ["plans/**"]
     }
   },
   "surface_projection": {
