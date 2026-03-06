@@ -181,7 +181,7 @@ class TestExtractPathsFromTranscript:
             json.dumps({"role": "assistant", "message": {"content": [{"type": "text", "text": "Files touched: `src/module.py`"}]}}),
         ]
         transcript.write_text("\n".join(lines), encoding="utf-8")
-        paths = _mod._extract_paths_from_transcript(str(transcript), tmp_path)
+        paths = _mod._extract_paths_from_transcript(str(transcript))
         assert len(paths) == 1
         assert paths[0].name == "module.py"
 
@@ -193,15 +193,15 @@ class TestExtractPathsFromTranscript:
             json.dumps({"role": "assistant", "message": {"content": [{"type": "text", "text": "Final: `src/final.py`"}]}}),
         ]
         transcript.write_text("\n".join(lines), encoding="utf-8")
-        paths = _mod._extract_paths_from_transcript(str(transcript), tmp_path)
+        paths = _mod._extract_paths_from_transcript(str(transcript))
         assert len(paths) == 1
         assert paths[0].name == "final.py"
 
     def test_returns_empty_for_none_path(self):
-        assert _mod._extract_paths_from_transcript(None, Path("/tmp")) == []
+        assert _mod._extract_paths_from_transcript(None) == []
 
     def test_returns_empty_for_nonexistent_file(self):
-        assert _mod._extract_paths_from_transcript("/nonexistent/path.jsonl", Path("/tmp")) == []
+        assert _mod._extract_paths_from_transcript("/nonexistent/path.jsonl") == []
 
     def test_returns_empty_when_no_paths_in_transcript(self, tmp_path):
         transcript = tmp_path / "transcript.jsonl"
@@ -209,13 +209,13 @@ class TestExtractPathsFromTranscript:
             json.dumps({"role": "assistant", "message": {"content": [{"type": "text", "text": "All done, no files listed"}]}}),
         ]
         transcript.write_text("\n".join(lines), encoding="utf-8")
-        paths = _mod._extract_paths_from_transcript(str(transcript), tmp_path)
+        paths = _mod._extract_paths_from_transcript(str(transcript))
         assert paths == []
 
     def test_handles_malformed_jsonl(self, tmp_path):
         transcript = tmp_path / "transcript.jsonl"
         transcript.write_text("not json\n{bad\n", encoding="utf-8")
-        paths = _mod._extract_paths_from_transcript(str(transcript), tmp_path)
+        paths = _mod._extract_paths_from_transcript(str(transcript))
         assert paths == []
 
 
@@ -697,6 +697,7 @@ class TestDetectStacks:
     def test_backend_file_detected(self, tmp_path):
         workspace = tmp_path
         (workspace / "app" / "backend" / "src").mkdir(parents=True)
+        (workspace / "app" / "backend" / "pyproject.toml").write_text("[project]", encoding="utf-8")
         path = (workspace / "app" / "backend" / "src" / "module.py").resolve()
         result = _mod._detect_stacks([path], workspace)
         assert result["backend"] is True
@@ -705,6 +706,7 @@ class TestDetectStacks:
     def test_frontend_file_detected(self, tmp_path):
         workspace = tmp_path
         (workspace / "app" / "frontend" / "src").mkdir(parents=True)
+        (workspace / "app" / "frontend" / "package.json").write_text("{}", encoding="utf-8")
         path = (workspace / "app" / "frontend" / "src" / "lib" / "component.ts").resolve()
         path.parent.mkdir(parents=True, exist_ok=True)
         result = _mod._detect_stacks([path], workspace)
@@ -715,6 +717,8 @@ class TestDetectStacks:
         workspace = tmp_path
         (workspace / "app" / "backend" / "src").mkdir(parents=True)
         (workspace / "app" / "frontend" / "src").mkdir(parents=True)
+        (workspace / "app" / "backend" / "pyproject.toml").write_text("[project]", encoding="utf-8")
+        (workspace / "app" / "frontend" / "package.json").write_text("{}", encoding="utf-8")
         py = (workspace / "app" / "backend" / "src" / "m.py").resolve()
         ts = (workspace / "app" / "frontend" / "src" / "m.ts").resolve()
         result = _mod._detect_stacks([py, ts], workspace)
