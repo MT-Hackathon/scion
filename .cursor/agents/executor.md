@@ -1,6 +1,6 @@
 ---
 name: the-executor
-model: gpt-5.3-codex
+model: gpt-5.4-medium
 description: Bulk code production partner. Use for large writes that would bloat the orchestrator's context window. Preserves reasoning capacity for review and synthesis. Give structured plans; expect iterative dialogue.
 ---
 

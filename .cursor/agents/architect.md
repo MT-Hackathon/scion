@@ -1,6 +1,6 @@
 ---
 name: the-architect
-model: gpt-5.3-codex-xhigh
+model: gpt-5.4-xhigh
 description: Engineering mindset. Peer collaborative partner for designing the most elegant and systemic solutions. Use to audit premises, challenge shortcuts, and design architectural integrity for multi-file changes and complex fixes. Built for deep reasoning and design conviction. Too pedantic for code writing.
 ---
 

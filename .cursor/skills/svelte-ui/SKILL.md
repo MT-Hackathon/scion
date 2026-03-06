@@ -56,6 +56,35 @@ description: "Governs SvelteKit/Svelte 5 component patterns, Zod validation, HTT
 
 See `ui-architecture` skill for the universal layout ownership model, push/overlay decision criteria, portal architecture, scroll containment, and z-index layering. This section covers Svelte-specific implementation.
 
+### App-Shell Scroll Model (MANDATED)
+
+This app uses a **fixed viewport app-shell**: `<main>` clips via `overflow-hidden` and does NOT scroll. Every route must provide its own scroll container.
+
+Required scroll containment chain:
+```
+<div class="flex h-dvh">               ← root, deterministic height (NOT min-h-screen)
+  <div class="flex flex-1 flex-col min-h-0">  ← content column, min-h-0 required
+    <main class="flex-1 min-h-0 overflow-hidden">  ← clipping host, NOT scroll owner
+      <!-- route content here — must own its own scroll -->
+```
+
+**Route mandate**: Every route component must wrap its content in a scroll container. Flat layouts use `<div class="h-full overflow-y-auto">`. Master-detail layouts use `MasterDetailLayout` (which provides pane-level scrolling internally). No route may rely on page-level scroll.
+
+**`h-dvh` vs `min-h-screen`**: Use `h-dvh` (dynamic viewport height) for deterministic flex containment chains. `min-h-screen` creates a minimum bound but does not cap height, making scroll containment unreliable.
+
+**Mode switching with ResizeObserver**: Layout components that switch between push and overlay modes based on container width use `ResizeObserver` (not CSS `@container`). CSS container queries cannot reach Svelte `$state`. Pattern:
+```svelte
+$effect(() => {
+  if (!containerEl) return;
+  const ro = new ResizeObserver(([entry]) => {
+    if (!entry) return;
+    mode = entry.contentRect.width >= threshold ? 'push' : 'overlay';
+  });
+  ro.observe(containerEl);
+  return () => ro.disconnect();
+});
+```
+
 ### Svelte Portal Action
 The `portal` action at `$lib/ui/utils/portal.ts` moves a DOM node to `document.body` on mount and removes it on destroy. Use in overlay mode to escape `inert` subtrees:
 

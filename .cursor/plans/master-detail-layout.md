@@ -228,6 +228,9 @@ cd app/frontend && npm test -- --run
 **UX finding from stability walk — push/pull naming ambiguity**:
 In the dashboard drawer, "Sync from Scion" = pull, "Push Now" = push to contributor branch. But when the user sees "Pull Preview: 513 files will be copied," it's unclear which direction files are moving. "Push" and "Pull" are git-centric terms that don't map to the user's mental model of "update my project" vs "share my changes." Consider renaming to directional labels: "Update from Scion" / "Contribute to Scion" or "Download" / "Upload" or similar. The action buttons in the drawer ("Sync from Scion" is better than "Pull") and the stat label ("Drift" is ambiguous — drift from what, in which direction?) need a naming pass. This is a UX task, not a code task — the buttons work, the words don't.
 
+**Policy bug — ignore glob support missing (fix ASAP)**:
+`classify_file` in `crates/graft-core/src/policy.rs` line 158 uses `HashSet::contains(relative_path)` for ignore patterns — exact string match only. Overwrite and protect use `GlobSet` for glob matching; ignore does not. Adding `"plans/**"` to ignore patterns has no effect; you must list each file individually. Fix: build an `ignore_globset` the same way `overwrite_globset` and `protect_globset` are built, and check it in `classify_file`. This is a ~15-line change in `policy.rs` plus a test case. The `flatten_policy_entries` function already handles `patterns` arrays — the issue is only in the matching step.
+
 **Related work**:
 - Telemetry instrumentation (Rust `tracing` crate + frontend wrapper) — issue filed separately. Pattern settled: instrument freely, `tracing` with no subscriber is zero-cost (one atomic load). No `max_level_release` — desktop app benefits from being able to attach a subscriber without recompile.
 - Issue #70 (Learning onboarding) — MasterDetailLayout is a prerequisite for good onboarding UX.
