@@ -10,8 +10,6 @@ Knowledge curation and distribution system for shared `.cursor` and `.claude` AI
 
 **Hub**: The `scion` repo (`git@gitlab.com:cdo-office/scion.git`, public mirror at `github.com/MT-Hackathon/scion`) is the canonical knowledge store — it holds only `.cursor/` content, `graft-policy.json`, and `.rootstockignore`. The rootstock app repo connects to scion as a spoke project, just like every other project. `main` branch is the golden image; contributor branches (`contributor/{contributor}/{project_id}`) hold unreviewed submissions.
 
-**Stack**: Desktop: Rust/Tauri 2.0 | Frontend: SvelteKit/Svelte 5 (adapter-static) | CLI: Rust/clap | Governance: scion repo's `.cursor/`
-
 ### The 9 Invariants
 
 **1. Token Budget Governance**
