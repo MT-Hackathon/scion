@@ -86,6 +86,34 @@ network benefits from the latest learnings.
       commit hash and file-level checksums to detect "unauthorized" local drift.
       It acts as the high-water mark for synchronization.
 
+### 3.1 Learning Onboarding (First Connect)
+When a new user connects an existing project to Rootstock for the first time,
+the system runs a bidirectional Learning cycle before normal steady-state sync.
+The sequence is deliberate:
+
+1.  **Detect**: Inventory all existing `.cursor/` content in the target project.
+2.  **Relocate**: Move existing local content into the protected zone (`200+`).
+    - Numbered rules are renumbered from `000-199` to `200+` (for example,
+      `001-foo` becomes `201-foo`).
+    - Unnumbered rules receive a `200-` prefix.
+    - Rules already in `200+` remain in place.
+    - Name conflicts preserve both artifacts by prefixing the relocated local
+      version with `Local_`.
+3.  **Pull**: Apply scion canonical into the now-empty portable range (`000-199`)
+    so the environment is fully populated with current conventions.
+4.  **Prompt**: Issue a contextualized curation prompt to the now-briefed AI.
+    It audits relocated content against canonical, consolidates overlap, keeps
+    truly project-specific knowledge in `200+`, and identifies novel knowledge
+    worth upstream contribution.
+5.  **Push**: Send novel contributions to the contributor branch for central
+    curation.
+
+This ordering solves the bootstrapping problem: curation happens only after the
+AI has received canonical guidance, so it can judge local material against the
+shared standard rather than from an unbriefed state. In effect, each install is
+also an ingestion event: every new user can enrich scion as part of onboarding.
+(Reference: Issue #70)
+
 ## 4. File Classification Model
 Not all files in a `.cursor` environment have the same lifecycle. Rootstock
 uses a policy-driven engine (`graft-policy.json`) to determine how each path is
@@ -149,6 +177,31 @@ a hub-and-spoke model where the **scion** repository acts as the central hub.
 **The scion repo** (`git@gitlab.com:cdo-office/scion.git`, public mirror at `github.com/MT-Hackathon/scion`) is a dedicated knowledge-only repository. It contains only `.cursor/` content — rules, skills, agents, hooks — plus `graft-policy.json` and `.rootstockignore`. No application code. The rootstock app repo connects to scion as a spoke project, the same as any other project. `main` is the canonical golden image; contributor branches (`contributor/{contributor}/{project_id}`) hold unreviewed submissions.
 
 The runtime core is Rust: both the desktop app (`src-tauri/`) and CLI (`crates/graft-cli/`) consume the shared `graft-core` crate (`crates/graft-core/`).
+
+### 7.1 Master-Detail Layout Pattern (Desktop UI)
+For master-detail screens, the frontend uses an explicit three-layer composition:
+
+```text
+AppShell (sidebar + content area)
+  └─ MasterDetailLayout (horizontal split + responsive mode)
+       ├─ master: ListPage (pure list: header, filters, table, pagination)
+       └─ detail: DrawerPeek (pure panel: chrome, close, scroll)
+```
+
+This pattern exists to enforce layout ownership boundaries and avoid recurring
+cross-framework regressions:
+
+- One layout owner per axis, and one scroll owner per pane.
+- The master side scrolls as one continuous unit (stats through pagination).
+- The detail panel occupies full available height, without vertical sandwiching.
+- Push versus overlay behavior is decided by container width (container query),
+  not viewport-wide breakpoints.
+- Semantic components (`ListPage`) do not own viewport geometry; layout
+  components (`MasterDetailLayout`) do.
+
+The anti-pattern is stable and costly: when semantic components start owning
+viewport geometry, master-detail bugs recur across implementations.
+(Reference: `.cursor/plans/master-detail-layout.md`)
 
 ```mermaid
 graph TD
@@ -222,6 +275,7 @@ transitions from a single-user tool to a collective intelligence platform.
   and the CLI is transitioning to a native Rust binary (`graft-cli`) rather
   than a Python script.
 - **Support**: `.cursor` sync is operational; `.claude` support is planned.
+- **Proactive Notification Queue**: `notifications` table in `graft_runtime.db` receives alerts from the running app (stale sync, scion advanced, health issues). The `sessionStart` hook delivers pending notifications by prepending them to the codebase briefing (Rule 999) and marks them delivered. Queue archives after 7 days. Zero overhead when queue is empty.
 
 ### Phase B: Centralized Curation (Near)
 - **State**: Central hosted instance for multi-repo management.
@@ -263,9 +317,114 @@ organizes it into clear functional zones:
 - **Scion**: The canonical knowledge repository. In arboriculture, the scion is the productive cutting — selected for quality, grafted onto rootstock to grow. In this system, the scion repo carries the knowledge (rules, skills, agents) that determines how the AI behaves. It is a separate repo from the rootstock application code.
 - **Rootstock**: The platform — the application, the sync engine, the desktop app. Not the knowledge itself.
 - **Graft**: The mechanism of distribution from the hub to the spokes. Also the CLI and sync library name.
+- **Learning**: The bidirectional first-connect curation cycle where scion and a
+  new user's environment exchange knowledge.
+- **MasterDetailLayout**: The layout component that owns the horizontal split
+  between the list pane and detail panel.
+- **Ogham**: The AI persistent memory component embedded in `graft_runtime.db`. Named for the Celtic tree alphabet used by druids to encode knowledge in tree-related marks — here encoding the AI's accumulated experiential knowledge. Distinct from rules and skills (shared canonical knowledge) — the ogham carries personal, dyad-specific memory: session learnings, collaboration calibrations, project-specific context. The `memories` table is the ogham store; the session_briefing hook delivers top-ranked ogham memories into Rule 998 at each session start. Unlike scion knowledge (shared across all projects), ogham is private to this machine and this user-AI relationship.
 - **Drift**: The delta between a local environment and the canonical state.
 - **Curation Rubric**: The set of quality standards used to evaluate new knowledge.
 - **Token Budget**: The limit on context size that dictates how much knowledge can be active at once.
 - **Dyad**: The collaborative pair of one human developer and one AI instance.
 - **Inbound Drift**: Changes available in canonical (scion `main`) that are not yet local.
 - **Outbound Drift**: Local changes that have not yet been pushed to a scion contributor branch.
+
+## 13. AI Memory Layer
+Rootstock embeds a persistent AI memory system directly into `graft_runtime.db`.
+Unlike rules and skills — which carry *shared* knowledge to all dyads — the
+memory layer carries *personal* knowledge specific to this AI instance, this
+machine, and this user relationship.
+
+The memory layer is called the **ogham** (after the Celtic tree alphabet used
+by druids to encode tree-wisdom). It has three components:
+
+1.  **Storage**: The `memories` table holds claims classified by kind
+    (observation, decision, pattern, etc.), tagged for retrieval, and ranked by
+    activation score. The `memory_fts` virtual table provides FTS5 full-text
+    search. The `memory_links` table records associative relationships between
+    memories. Foreign key enforcement and WAL-mode SQLite ensure consistency
+    across concurrent writers.
+
+2.  **Capture**: The MCP `write_memory` tool is the primary capture path when
+    the MCP server is active. Rule 998 (`temporal-self`) instructs the AI to
+    write memories at session end regardless. The `sessionStart` hook serves as
+    a supplementary path for structured session-level capture.
+
+3.  **Delivery — a "no wrong door" cascade**:
+    - **MCP active**: `serverInstructions` inject a ranked memory summary at
+      connection time — always on, no tool call required, available immediately
+      in the first message.
+    - **MCP absent**: The `sessionStart` hook queries `graft_runtime.db` and
+      writes ranked memories into Rule 998's `<!-- ROOTSTOCK:MEMORY:START -->`
+      section before the session begins.
+    - **Baseline**: Rule 998 always carries the manually authored self-portrait
+      as the floor — present even with no hook and no MCP.
+
+The cascade ensures memory is always present at session start. The MCP path is
+richer (dynamic, queryable, updatable mid-session); the file path is always
+available as a fallback; Rule 998 is the unconditional floor.
+
+The ogham is private to this machine and this user-AI relationship. It never
+reaches canonical (scion main). Future phases will enable serialized portability
+via user contributor branches.
+
+## 14. Autonomous Operation Model
+
+Rootstock is designed to require minimal user attention for knowledge maintenance. The goal: the AI manages the knowledge environment autonomously within well-defined boundaries, escalating to the user only at permission-required boundaries.
+
+### Auto-Sync Architecture
+
+Sync is event-driven, not time-polled. The Rootstock app (running persistently as the sync daemon) handles all git operations. The AI produces knowledge (writes to `.cursor/`); the app discovers and propagates it.
+
+| Event | Action |
+| :--- | :--- |
+| Session close (stop hook) | Auto-push local `.cursor/` changes to contributor branch |
+| Significant `.cursor/` write | Debounced push (45s) — app file watcher detects and queues |
+| App startup | Fetch check — pull if scion has advanced |
+| Background (every 20 min) | Pull check — notify if scion has advanced, don't auto-apply |
+
+### Canonical Push-Down Model
+
+After curation, scion **pushes** canonical down to all contributor branches rather than waiting for contributors to pull. The policy layer handles conflicts automatically:
+- **0–199 range (overwrite)**: Canonical wins. Local modifications to these files surface as synthesis prompts for resolution.
+- **200+ range (protect)**: Never touched by canonical push. No conflict possible.
+- **rootstockignore entries**: Excluded entirely.
+
+When a genuine conflict exists (same 0–199 file modified both locally and in canonical), the app surfaces a parameterized synthesis prompt for the user to route to an AI thread for resolution. The resolution updates the contributor branch; the next curation cycle absorbs it into canonical.
+
+### Four-Level Sensitivity Gradient
+
+The pre-push scanner (future) enforces these levels before any git operation:
+
+1. **Accidental personal information** — names, identifiers, personal details in rules or skills. Caught by curation review.
+2. **Project-private context** — internal architecture decisions or company-specific terminology in canonical-bound files. Caught by policy classification.
+3. **Credentials and API keys** — pre-push scanner with regex patterns and high-entropy string detection. Hard block before any git operation.
+4. **Structural leakage** — individually benign content that reveals sensitive information in aggregate. Caught by human curation review.
+
+### Autonomous Operation Boundaries
+
+The AI operates autonomously within the contributor branch and local environment. Permission check-ins are required only for:
+
+- Modifying canonical (`scion main` — requires curation + human review)
+- Touching user-protected zones (200+ rules, rootstockignore entries)
+- External push when a merge conflict exists on the remote
+- Escalating a decision to another user's curator agent
+
+Everything else — sync operations, memory management, health checks, contributor branch updates — runs without interruption.
+
+### 14.1 Telemetry and Runtime Instrumentation
+Rootstock instruments both runtime layers by default, then controls export at
+runtime through explicit user consent.
+
+- **Rust runtime**: Uses `tracing`. With no active subscriber, call sites are
+  effectively near-zero overhead (one atomic load check). Rootstock does not set
+  `max_level_release`; desktop debugging benefits from attaching subscribers in
+  production when needed.
+- **Frontend runtime**: Uses a thin `track(event, data?)` wrapper gated by an
+  `enabled` boolean. Disabled mode is one predicted branch and effectively free.
+- **Consent model**: Telemetry is opt-in via a Settings toggle, persisted in
+  `graft_runtime.db`.
+
+Design principle: instrument freely at build time, attach exporters at runtime
+based on user consent. The instrumentation call sites stay stable; only the
+runtime attachment changes.

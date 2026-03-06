@@ -1,6 +1,6 @@
 ---
 name: angular-forms-material
-description: "Governs Angular reactive forms, Material component patterns, and Material Design 3 token governance: FormGroup, FormBuilder, FormArray, validators, MatTable, MatDialog, design tokens, color palettes, typography, and CSS variables. Use when building forms, data tables, dialogs, Material UI components, or configuring token-based visual consistency. DO NOT use for HTTP requests (see angular-http-reactive) or accessibility requirements (see accessibility)."
+description: "Governs Angular reactive forms, Material component patterns, and Material Design 3 token governance: FormGroup, FormBuilder, FormArray, validators, MatTable, MatDialog, design tokens, color palettes, typography, and CSS variables. Use when building forms, data tables, dialogs, Material UI components, or configuring token-based visual consistency. DO NOT use for HTTP requests (see angular-http-reactive), accessibility requirements (see accessibility), or framework-agnostic layout architecture or design token principles (see ui-architecture)."
 ---
 
 <ANCHORSKILL-ANGULAR-FORMS-MATERIAL>
@@ -145,6 +145,8 @@ Mandatory when a Component exceeds **500 lines** or a Service exceeds **400 line
 - **Active state**: Navigation active state must use `color-mix(in srgb, var(--mat-sys-primary) 8%, transparent)`, not `primary-container`.
 
 ### Token Architecture
+For the universal three-tier token hierarchy (primitive → semantic → component) and token mandates, see `ui-architecture`. This section covers Angular Material M3 token bindings specifically.
+
 - **Material tokens**: Use `--mat-sys-*` for Material color and typography system values.
 - **App tokens**: Use `--app-*` for spacing, radius, and motion semantics.
 - **Shapes**: Set shape globally from root tokens (standard radius `--app-radius-md`).

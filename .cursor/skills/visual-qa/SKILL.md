@@ -1,6 +1,6 @@
 ---
 name: visual-qa
-description: "Governs visual QA methodology for UI audits: inspection protocol, journey-driven auditing, output templates, and interpretive reasoning for application health vs component health. Use when conducting visual regression audits, viewport verification, or browser-based QA of any frontend/UI change. DO NOT use for accessibility compliance mandates (see accessibility) or error handling architecture (see error-architecture)."
+description: "Governs visual QA methodology for UI audits: inspection protocol, journey-driven auditing, output templates, and interpretive reasoning for application health vs component health. Use when conducting visual regression audits, viewport verification, layout regression detection, or browser-based QA of any frontend/UI change. DO NOT use for accessibility compliance mandates (see accessibility) or error handling architecture (see error-architecture)."
 ---
 
 <ANCHORSKILL-VISUAL-QA>
@@ -163,6 +163,9 @@ What AI agents commonly miss during visual inspection:
 - **Intermittent states** — Success or error indicators that appear briefly and auto-dismiss. Toasts with short duration may be gone before the screenshot. If a journey step mentions a toast, verify its text immediately.
 - **Shortcut learning** — Associating color with outcome ("green = good") without reading the actual content.
 - **Viewport-specific failures** — An element that works at 1200px but clips or overflows at 375px. Desktop results do not transfer. Check all three.
+- **Sandwich Layout** — Content area squeezed between a fixed/sticky header and footer, leaving the scrollable region with insufficient height. Diagnostic: check if the scrollable container has a bounded height. If the container grows to fit content instead of constraining it, the page becomes a single scroll surface. Related: `ui-architecture` scroll containment model.
+- **Scroll Containment Failure** — Inner scroll region loses bounded height when a parent container layout changes (e.g., flex-column to flex-row). The page becomes a single scroll surface instead of having independent scroll regions. Diagnostic: at constrained viewport height, verify that only the intended region scrolls.
+- **Theme Cascade** — Components update at different speeds during theme toggle, creating a visible ripple. Caused by `transition-colors` on structural elements (animates 100–200ms) while undecorated elements snap instantly. Diagnostic: toggle theme and observe — if you can SEE the cascade, structural elements have transitions they shouldn't.
 
 ## Cross-References
 

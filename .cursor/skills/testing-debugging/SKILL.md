@@ -14,7 +14,7 @@ description: "Governs cross-layer testing and debugging doctrine: diagnostic ord
 - **Parameterized Testing for Combinatorial Logic**: For combinatorial logic (rules, permissions), use parameterized tests with boundary values and type mismatches.
 - **Dead Code Triage**: Identify and remove dead code before writing tests. Reducing the denominator is more valuable than testing what should be deleted.
 - **Coverage Ratchet**: Thresholds only move up. Structure work to maintain a green build at every step rather than relaxing constraints for partial signal.
-- **Coverage Resistance as Design Signal**: When branch coverage is hard to achieve, the problem is usually architecture (too many responsibilities in one unit), not insufficient tests. Decompose before adding test volume.
+- **Coverage Resistance as Design Signal**: Elevated to 001-foundational as a core discipline. When branch coverage is hard to achieve, decompose the code — the architecture has too many responsibilities, not too few tests.
 - **Territory Principle**: Establish fact from authoritative runtime evidence before assuming cause in code.
 - **UI Verification Mandate**: UI fixes require BEFORE vs AFTER screenshot evidence with explicit state differences.
 - **Backend Debug Flow**: Bug -> logging/observability -> focused unit test -> stack trace -> code fix -> re-test.
@@ -29,7 +29,7 @@ When tests fail, use this sequence:
 ## 3. Silent Failure Prevention
 - **Mandate**: Every early return, redirect, or error-catch MUST log a reason with context.
 - **Catching Guidelines**: Infrastructure failures are VALID (log and return safe defaults); guard clause throws are VALID (fail fast); business exceptions used to branch behavior are INVALID (use result types/data records).
-- **Logger**: Use `LoggerService` (Web) or `CorrelationFilter` MDC (API).
+- **Logger**: Use the language-appropriate logger (e.g., Angular's `LoggerService`, Spring's `CorrelationFilter` MDC).
 ## 4. Language Debugging Profiles
 Language-specific debugging patterns, tool commands, and common defect taxonomies live in each language's skill:
 - Angular: [angular-testing](../angular-testing/SKILL.md)

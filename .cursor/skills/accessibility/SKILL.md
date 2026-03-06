@@ -10,7 +10,7 @@ description: "Governs Section 508 and WCAG 2.2 AA accessibility requirements: AR
 ## Table of Contents & Resources
 
 - [Core Concepts](#core-concepts)
-- [SvelteKit Utilities](#sveltekit-utilities)
+- [Accessibility Utilities](#accessibility-utilities)
 - [Angular CDK Accessibility](#angular-cdk-accessibility)
 - [Blueprints](blueprints/) — `focus-trap.ts`, `keyboard-nav.ts`, `page-lock.ts`
 - [Checklist: 508 Compliance](resources/checklist-508-compliance.md)
@@ -72,7 +72,7 @@ All components and features MUST meet Section 508 and WCAG 2.2 Level AA standard
 - Use empty `alt=""` for decorative images
 - Complex images need `aria-describedby` with detailed descriptions
 
-### SvelteKit Utilities
+### Accessibility Utilities
 
 Framework-agnostic TypeScript utilities live in `app/frontend/src/lib/ui/utils/`.
 Blueprints mirror the authoritative source files.
@@ -90,6 +90,8 @@ Blueprints mirror the authoritative source files.
 - Use `FocusTrap` directive for modal dialogs
 
 ### Layout Overflow Prevention (MANDATED)
+
+For the architectural layout constraints that prevent overflow (scroll containment model, bounded height requirements), see `ui-architecture`. This section covers the accessibility impact of overflow failures.
 
 Horizontal scrollbars are a usability and accessibility failure:
 - Keyboard users must navigate in two dimensions

@@ -2,4 +2,4 @@
 alwaysApply: true
 ---
 
-<!-- Content is per-user/per-project and excluded from Rootstock sync. -->
+<!-- Content is per-user/per-project and excluded from Scion sync. -->
