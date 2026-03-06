@@ -12,6 +12,9 @@
     "stop": [
       {
         "command": "uv run .cursor/hooks/session_capture.py"
+      },
+      {
+        "command": "uv run .cursor/hooks/cargo_sweep.py"
       }
     ],
     "sessionStart": [

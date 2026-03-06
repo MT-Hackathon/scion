@@ -29,7 +29,7 @@ When tests fail, use this sequence:
 ## 3. Silent Failure Prevention
 - **Mandate**: Every early return, redirect, or error-catch MUST log a reason with context.
 - **Catching Guidelines**: Infrastructure failures are VALID (log and return safe defaults); guard clause throws are VALID (fail fast); business exceptions used to branch behavior are INVALID (use result types/data records).
-- **Logger**: Use `LoggerService` (Web) or `CorrelationFilter` MDC (API).
+- **Logger**: Use the language-appropriate logger (e.g., Angular's `LoggerService`, Spring's `CorrelationFilter` MDC).
 ## 4. Language Debugging Profiles
 Language-specific debugging patterns, tool commands, and common defect taxonomies live in each language's skill:
 - Angular: [angular-testing](../angular-testing/SKILL.md)

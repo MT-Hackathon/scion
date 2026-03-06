@@ -1,6 +1,6 @@
 ---
 name: svelte-ui
-description: "Governs SvelteKit/Svelte 5 component patterns, Zod validation, HTTP communication, reactive state management, styling tokens, and template rendering performance. Use when building Svelte components, implementing forms, handling user input, calling APIs, or styling with design tokens. DO NOT use for canvas/pipeline patterns (see ui-canvas), security requirements (see ui-security), or accessibility compliance (see accessibility)."
+description: "Governs SvelteKit/Svelte 5 component patterns, Zod validation, HTTP communication, reactive state management, design token CSS variable system (primitive/semantic/component tiers), page framework components (ListPage/FormPage), drawer and overlay implementations (DrawerPeek/Dialog), and template rendering performance. Use when building Svelte components, implementing forms, working with the Svelte/Tailwind design token system, debugging Svelte-specific layout or drawer implementations, handling user input, or calling APIs. For framework-agnostic layout architecture, see ui-architecture. DO NOT use for canvas/pipeline patterns (see ui-canvas), security requirements (see ui-security), or accessibility compliance (see accessibility)."
 ---
 
 <ANCHORSKILL-SVELTE-UI>
@@ -11,6 +11,7 @@ description: "Governs SvelteKit/Svelte 5 component patterns, Zod validation, HTT
 - [Core Concepts](#core-concepts)
 - [Svelte 5 Syntax (MANDATORY)](#svelte-5-syntax-mandatory)
 - [Token System and Styling (MANDATED)](#token-system-and-styling-mandated)
+- [Layout Architecture](#layout-architecture)
 - [Form and Validation Model (MANDATED)](#form-and-validation-model-mandated)
 - [HTTP Communication Model (MANDATED)](#http-communication-model-mandated)
 - [Loading and Display States (MANDATED)](#loading-and-display-states-mandated)
@@ -50,6 +51,26 @@ description: "Governs SvelteKit/Svelte 5 component patterns, Zod validation, HTT
 - Use Tailwind token-mapped classes for standard styling and `var(--token)` for complex cases.
 - Theme switches update CSS variables through settings store + CSS sync; components should not implement theme logic directly.
 - For forms and controls, prefer shared class families and accelerator components over ad hoc styling.
+
+## Layout Architecture
+
+See `ui-architecture` skill for the universal layout ownership model, push/overlay decision criteria, portal architecture, scroll containment, and z-index layering. This section covers Svelte-specific implementation.
+
+### Svelte Portal Action
+The `portal` action at `$lib/ui/utils/portal.ts` moves a DOM node to `document.body` on mount and removes it on destroy. Use in overlay mode to escape `inert` subtrees:
+
+```svelte
+{#if open}
+  <div use:portal>
+    <!-- overlay content -->
+  </div>
+{/if}
+```
+
+Push-mode panels do NOT use portal — they are in-flow flex siblings.
+
+### Page Lock Implementation
+`$lib/ui/utils/page-lock.ts` implements reference-counted scroll locking. Only overlay-mode drawers call `setPageLock(true)`. Push-mode drawers call focus management only.
 
 ## Form and Validation Model (MANDATED)
 
@@ -122,13 +143,14 @@ Before adding or refactoring Svelte forms/components, search canonical implement
 
 - No native/desktop wrappers, IPC bridges, window hacks, or non-HTTP transport from UI.
 - No inline error swallowing or hidden backend failures.
-- No hardcoded layout/color values where shared tokens already cover the need.
+- No hardcoded color values where shared tokens already cover the need.
 - No inline hex/rgb color literals or per-component color variable systems.
 - No unkeyed dynamic lists or index keys for mutable collections.
 - No plain visible `<input>` where accelerator `Input` is appropriate.
 - No creation of divergent select/input class systems outside shared token patterns.
 - No bypassing settings/token synchronization flow.
 - No `goto()` in `onMount` for route redirects; use SvelteKit server-side `redirect()`.
+- For layout-related prohibited patterns (semantic components owning viewport geometry, transition-colors on structural elements, etc.), see `ui-architecture` Prohibited Patterns.
 
 ## Resources
 - `resources/reference-tech-stack.md` — SvelteKit architecture and environment/deployment patterns
@@ -156,6 +178,7 @@ Before adding or refactoring Svelte forms/components, search canonical implement
 - `blueprints/form-page.svelte` — form layout with guarded async submit and action bar
 
 ## Cross-References
+- [ui-architecture](../ui-architecture/SKILL.md): framework-agnostic layout ownership model, push/overlay decisions, portal architecture, scroll containment, z-index layering, and three-tier token hierarchy.
 - [ui-canvas](../ui-canvas/SKILL.md): canvas/pipeline rendering, node/edge rules, pipeline persistence.
 - [ui-security](../ui-security/SKILL.md): credential handling, frontend security boundaries, payload constraints.
 - [accessibility](../accessibility/SKILL.md): WCAG/Section 508 ARIA, keyboard, and assistive-tech requirements.

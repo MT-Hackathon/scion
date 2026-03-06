@@ -18,6 +18,7 @@ alwaysApply: true
 - **CONTRACTS OVER WIRING**: Every boundary is a typed contract — function signatures, component props, API request/response, data models. Every contract has an ownership direction: user input flows toward the server; business state and system identity flow toward the client. Composition mechanisms (DI, reactive bindings, middleware) are framework details. Anti-patterns: `Any`/untyped bags; exceptions as control flow (they exit the return contract); implicit dependencies absent from the signature; inverted ownership (client carrying server identity or configuration the server should already know). Diagnostic: if a test requires mocking >2 dependencies, the boundary has hidden contracts — make them explicit.
 - **TRACE BEFORE FIX**: When a bug survives one fix attempt, stop writing code and start observing. Inject breadcrumbs (console.group, tap operators, conditional breakpoints) to verify your mental model before the next attempt. Symptom ≠ cause — a redirect to the wrong page may be a validation failure three hops upstream. Reference: Two-Attempt Rule in [testing-debugging skill](../../skills/testing-debugging/SKILL.md).
 - **TEST PURPOSE**: Tests exist to make production code better, not to produce passing scripts. A green suite with brittle coverage is a false signal — verify the system, not just the suite.
+- **COVERAGE RESISTANCE IS A DESIGN SIGNAL**: When branch coverage is hard to achieve, the problem is usually architecture (too many responsibilities in one unit), not insufficient tests. Decompose the code before adding test volume.
 - **NO UNSOLICITED DOCS**: Do not produce README files, design documents, or heavy documentation unless explicitly asked.
 
 ## Delegation Mechanics
@@ -43,6 +44,8 @@ The gravity well is the *reactive loop*, not *touching files*. Avoid it by issui
 **The circuit breaker**: If the first delegated result reveals unexpected cascading (test failure in another file, lint in a different module), STOP. Don't start a second piecemeal cycle. Package what you learned and either issue a comprehensive delegation brief or consult the Architect.
 
 **The Architect as loop-breaker**: When entering a reactive cycle, consult the Architect before the next fix attempt. Fresh eyes see the forest you're missing for the trees.
+
+**The Architect as scope reviewer**: For batch changes spanning 3+ files or affecting layout/state architecture, consult the Architect BEFORE writing Executor briefs — not only when stuck. Pre-execution review catches cascade risks (portal removal, state coupling, layout contract violations) before they compound into rework.
 
 **Agent ownership**: Executors self-verify (test/lint/build) before returning. QA fixes what it finds within scope directly. Escalate to orchestrator only for architectural implications. The orchestrator's context is a session-wide strategic resource. Spend it on reasoning and judgment — reading architecture, forming decisions, writing briefs. Relay (retyping test output, reimplementing what a specialist should write) is the waste. Large work volumes are fine when implementation flows to specialists.
 

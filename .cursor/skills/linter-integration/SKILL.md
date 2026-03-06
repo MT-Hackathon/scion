@@ -134,9 +134,18 @@ Python linting for the Universal-API backend and rule/skill scripts:
 - **Auto-fix**: `ruff check --fix src/`
 - **Full check**: `ruff check src/ && mypy src/`
 
+### Rust / Clippy
+
+Rootstock's Cargo workspace uses Clippy as the lint gate:
+
+- Run: `cargo clippy --workspace --all-targets -- -D warnings`
+- Zero warnings policy: same as ESLint and Ruff — all warnings are errors in CI
+- Key lint categories: `clippy::unwrap_used` (use `?` or explicit error handling), `clippy::todo` (no TODOs in production), `clippy::cognitive_complexity` (decompose at threshold)
+- The AI Anti-Patterns table applies equally: unnecessary clone, magic numbers, unused variables all have Clippy equivalents
+
 ### Java Linting (Gradle)
 
-Backend linting runs through Gradle tasks in the `procurement-api` repo:
+Backend linting runs through Gradle tasks in the Java backend repo:
 
 ```
 ./gradlew checkstyleMain checkstyleTest   # Style + coding rules
@@ -158,7 +167,7 @@ Key SpotBugs detectors: `NP_NULL_ON_SOME_PATH` (NPE risk), `RCN_REDUNDANT_NULLCH
 
 See [angular-forms-material](../angular-forms-material/SKILL.md) for complete token reference.
 
-### npm Scripts Convention
+### npm Scripts Convention (example from Angular project)
 
 ```json
 {

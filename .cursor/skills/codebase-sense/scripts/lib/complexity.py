@@ -73,7 +73,7 @@ _TS_SCOPE_NODES = {
 _PY_FUNCTION_NODES = {"function_definition"}
 _PY_BRANCH_NODES = {
     "if_statement",
-    "el" "if_clause",
+    "elif_clause",
     "for_statement",
     "while_statement",
     "except_clause",
@@ -83,7 +83,7 @@ _PY_BRANCH_NODES = {
 _PY_SCOPE_NODES = {
     "block",
     "if_statement",
-    "el" "if_clause",
+    "elif_clause",
     "else_clause",
     "for_statement",
     "while_statement",
@@ -162,7 +162,7 @@ _PROFILES["python"] = LanguageProfile(
     heuristic_fn_patterns=(r"^\s*def\s+[A-Za-z_][A-Za-z0-9_]*\s*\(",),
     heuristic_branch_patterns=(
         r"\bif\b",
-        r"\b" + "el" "if" + r"\b",
+        r"\belif\b",
         r"\bfor\b",
         r"\bwhile\b",
         r"\bexcept\b",
@@ -395,7 +395,7 @@ def _heuristic_py_nesting(source: str) -> int:
         stripped = line.strip()
         if not stripped or stripped.startswith("#"):
             continue
-        if not re.match(r"^(if|el" "if|for|while|try|except|with|else)\b", stripped):
+        if not re.match(r"^(if|elif|for|while|try|except|with|else)\b", stripped):
             continue
         indent = len(line) - len(line.lstrip(" "))
         depth = (indent // 4) + 1

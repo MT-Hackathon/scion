@@ -45,7 +45,7 @@ Specific, actionable, concise; no stack traces, internals, or credentials
 ### Testing
 Assert `status`/`error`/`code` presence; verify backend → IPC → frontend propagation
 
-### Source: HTTP Error Mapping
-`app/backend/src/routers/graft_router.py` — `_problem()` (line 19): builds an RFC 7807-style detail envelope `{title, detail, status}` as `HTTPException`. Typed catch pattern maps `ConfigError → 400`, `PolicyError → 400`, `GraftError → 500`. See also: `graft.constants.ErrorTitle` for the mandated title strings.
+### HTTP Error Mapping Pattern
+Build RFC 7807-style detail envelopes `{title, detail, status}` as HTTP exceptions. Use a typed catch pattern that maps domain errors to status codes (e.g., config/validation errors → 400, auth errors → 401/403, infrastructure errors → 500). Maintain a constants module for mandated error title strings to ensure consistency across handlers.
 
 </ANCHORSKILL-ERROR-ARCHITECTURE>
