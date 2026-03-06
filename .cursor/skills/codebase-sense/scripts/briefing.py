@@ -634,11 +634,11 @@ def _compute_delta(current: dict, previous: dict) -> list[tuple[str, str]]:
     for hotspot in current.get("hotspots", []):
         prev = prev_risks.get(hotspot["path"])
         if prev and abs(hotspot["risk"] - prev["risk"]) >= 12:
-            direction = "+" if hotspot["risk"] > prev["risk"] else "-"
+            direction = "+" if hotspot["risk"] > prev["risk"] else ""
             delta = hotspot["risk"] - prev["risk"]
             parts = PurePosixPath(hotspot["path"]).parts
             short = "/".join(parts[-2:]) if len(parts) >= 2 else hotspot["path"]
-            events.append(("risk", f"{short} risk: {prev['risk']} → {hotspot['risk']} ({direction}{abs(delta)})"))
+            events.append(("risk", f"{short} risk: {prev['risk']} → {hotspot['risk']} ({direction}{delta})"))
         elif prev is None and hotspot["risk"] >= 35:
             parts = PurePosixPath(hotspot["path"]).parts
             short = "/".join(parts[-2:]) if len(parts) >= 2 else hotspot["path"]
@@ -854,12 +854,7 @@ def _detect_cargo_workspace_crates(repos: list[Path]) -> int | None:
             continue
         members = workspace.get("members")
         if isinstance(members, list):
-            count = 0
-            for member in members:
-                if isinstance(member, str):
-                    expanded = list(repo.glob(member))
-                    count += len(expanded) if expanded else 1
-            return count
+            return len(members)
         return 0
     return None
 

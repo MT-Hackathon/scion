@@ -38,6 +38,32 @@ The `generate_context!()` macro in `src-tauri/src/lib.rs` resolves icons at comp
 
 `--strictPort` is mandatory. Without it, Vite silently increments the port if 5173 is busy. The Tauri window loads a blank "page not found" with no error in Tauri logs — the dev server started, just on a different port.
 
+### Port Conflict Failure Mode
+Port conflicts in this stack do NOT produce "address already in use" errors. They surface as hangs, connection refusals, or generic build failures that look like code problems. Previous agent threads are the primary offender — they start servers, fail, and leave ports bound for the next invocation to hit.
+
+**Before starting any server, check what is already bound:**
+```powershell
+Get-NetTCPConnection -LocalPort 5173,8000,55555 -ErrorAction SilentlyContinue |
+  Select-Object LocalPort, OwningProcess
+
+Stop-Process -Id <PID> -Force
+```
+
+Ports: `5173` (Vite), `8000` (graft-http), `55555` (Vitest browser mode).
+
+### Locked Binary on Windows
+`cargo tauri dev` fails with "failed to remove file rootstock.exe — Access denied" when a previous Tauri instance is still running. The process may not appear under the expected name in Task Manager.
+
+**Recovery**: Kill by process name first, then verify the binary is released before retrying:
+```powershell
+Stop-Process -Name "rootstock" -Force -ErrorAction SilentlyContinue
+# Wait a moment for the OS to release the file lock
+Start-Sleep -Milliseconds 500
+cargo tauri dev
+```
+
+If the process name lookup fails, find the PID via `Get-NetTCPConnection` on port 5173 (the Tauri window's Vite connection) and kill by PID.
+
 ## Command Boundary Patterns
 
 Commands are the Tauri IPC boundary. To preserve portability, the core library (`graft-core`) must remain free of Tauri-specific dependencies (`tauri::State`, `specta::Type`).
@@ -69,6 +95,20 @@ Tauri 2.0 uses capability-based security via `tauri.conf.json` and capability JS
 ## System Tray & Lifecycle
 
 System tray integration uses `@tauri-apps/plugin-tray-icon`. The standard pattern is to hide to tray on window close and provide an explicit quit option to stop the application.
+
+## Observability and Tracing
+
+Use the `tracing` crate for structured diagnostics. When no subscriber is attached, `tracing` macros reduce to a single atomic load — effectively free. Instrument Tauri commands, state transitions, and async operations freely; cost is incurred only when a subscriber is active.
+
+**Do not use `max_level_release`** to eliminate trace calls in release builds. Desktop apps need the ability to attach a subscriber in production for field debugging without recompiling. The atomic-load cost is negligible compared to the diagnostic value.
+
+```toml
+# Cargo.toml
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+```
+
+Initialize the subscriber in `lib.rs::run()` gated on `RUST_LOG` or a runtime flag so production instances remain silent by default but can opt in without a rebuild.
 
 ## Testing & Verification
 

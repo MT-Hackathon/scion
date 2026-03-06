@@ -14,7 +14,7 @@ description: "Governs cross-layer testing and debugging doctrine: diagnostic ord
 - **Parameterized Testing for Combinatorial Logic**: For combinatorial logic (rules, permissions), use parameterized tests with boundary values and type mismatches.
 - **Dead Code Triage**: Identify and remove dead code before writing tests. Reducing the denominator is more valuable than testing what should be deleted.
 - **Coverage Ratchet**: Thresholds only move up. Structure work to maintain a green build at every step rather than relaxing constraints for partial signal.
-- **Coverage Resistance as Design Signal**: When branch coverage is hard to achieve, the problem is usually architecture (too many responsibilities in one unit), not insufficient tests. Decompose before adding test volume.
+- **Coverage Resistance as Design Signal**: Elevated to 001-foundational as a core discipline. When branch coverage is hard to achieve, decompose the code — the architecture has too many responsibilities, not too few tests.
 - **Territory Principle**: Establish fact from authoritative runtime evidence before assuming cause in code.
 - **UI Verification Mandate**: UI fixes require BEFORE vs AFTER screenshot evidence with explicit state differences.
 - **Backend Debug Flow**: Bug -> logging/observability -> focused unit test -> stack trace -> code fix -> re-test.

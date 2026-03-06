@@ -32,7 +32,7 @@ _PY_IMPORT_RE = re.compile(
     r"^\s*import\s+([a-zA-Z0-9_.,\s]+)",
     flags=re.MULTILINE,
 )
-_RUST_USE_RE = re.compile(r"^\s*(?:pub\s+)?use\s+(.+?)\s*;", flags=re.MULTILINE | re.DOTALL)
+_RUST_USE_RE = re.compile(r"^\s*(?:pub\s+)?use\s+(.+?)\s*;", flags=re.MULTILINE)
 _RUST_MOD_RE = re.compile(
     r"^\s*(?:pub(?:\(crate\))?\s+)?mod\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*;",
     flags=re.MULTILINE,

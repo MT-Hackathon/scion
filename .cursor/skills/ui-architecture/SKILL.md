@@ -1,6 +1,6 @@
 ---
 name: ui-architecture
-description: "Governs framework-agnostic UI architecture: layout ownership model (sandwich anti-pattern, one-owner-per-axis), overlay and portal patterns, z-index layering, scroll containment, theme system structure, responsive strategy (container queries over media queries), transition constraints, and design token hierarchy. Use when deciding layout approach, designing overlay/drawer/modal behavior, structuring a theme system, debugging layout failures, or reasoning about page-level composition. DO NOT use for Svelte-specific implementation (see svelte-ui), Angular Material tokens (see angular-forms-material), or accessibility compliance (see accessibility)."
+description: "Governs framework-agnostic UI architecture: layout ownership model (sandwich anti-pattern, one-owner-per-axis), push vs overlay drawer/panel decisions, overlay and portal patterns, z-index layering, scroll containment, theme system structure, dead chrome elimination, responsive strategy (container queries over media queries), transition constraints, and design token hierarchy. Use when deciding layout approach, designing drawer/panel/modal behavior, choosing push vs overlay mode, structuring a theme system, debugging layout failures, or reasoning about page-level composition. DO NOT use for Svelte-specific implementation (see svelte-ui), Angular Material tokens (see angular-forms-material), or accessibility compliance (see accessibility)."
 ---
 
 <ANCHORSKILL-UI-ARCHITECTURE>
@@ -20,7 +20,6 @@ Framework-agnostic decisions about how the page is structured, how layers intera
 - [Transition Constraints](#transition-constraints)
 - [Dead Chrome](#dead-chrome)
 - [Layout Debugging Order](#layout-debugging-order)
-- [Epoch and Timestamp Safety](#epoch-and-timestamp-safety)
 - [Prohibited Patterns](#prohibited-patterns)
 - [Cross-References](#cross-references)
 
@@ -120,14 +119,6 @@ When a layout looks wrong, diagnose in this order:
 4. **Stacking context** — is a `transform`, `opacity`, or `will-change` creating an unexpected stacking context?
 5. **Z-index layer** — is the element in the correct canonical layer?
 
-## Epoch and Timestamp Safety
-
-When formatting timestamps for display, guard against stale or migrated data:
-
-- Don't trust `epochMs > 0` — small positive values (like `1`) are technically positive but epoch-adjacent (render as "12/31/1969" in US timezones).
-- Use a floor date: `if (epochMs < Date.UTC(2020, 0, 1)) return 'Never'` or equivalent.
-- This applies to any system that migrates timestamp storage formats.
-
 ## Prohibited Patterns
 
 - Semantic component owning viewport geometry for a sibling pane
@@ -142,7 +133,7 @@ When formatting timestamps for display, guard against stale or migrated data:
 ## Cross-References
 
 - [svelte-ui](../svelte-ui/SKILL.md): Svelte/Tailwind token implementation, component catalog, portal action.
-- [angular-forms-material](../angular-forms-material/SKILL.md): Angular Material token implementation, overlay container sync.
+- [angular-forms-material](../angular-forms-material/SKILL.md): Angular Material M3 token bindings and palette configuration.
 - [accessibility](../accessibility/SKILL.md): ARIA requirements for overlays, keyboard navigation, scroll impact.
 - [visual-qa](../visual-qa/SKILL.md): Layout regression detection methodology.
 - [tauri-development](../tauri-development/SKILL.md): Tauri window constraints, WebView viewport behavior.

@@ -2,9 +2,9 @@
 
 ## Project Overview
 - **Project**: Rootstock/Graft — knowledge curation and distribution system
-- **Stack**: Rust `graft-core` sync engine + Rust/clap `graft-cli` + Rust/axum `graft-http` (test adapter) + Rust/Tauri 2.0 desktop (`src-tauri`) + SvelteKit/Svelte 5 + TypeScript + Zod + Tailwind CSS 4 frontend + skill scripts (PEP 723)
-- **Architecture**: Contracts Over Wiring — typed boundaries, explicit data flow, immutable value models
-- **Development Branch**: `refactor/rust-port`
+- **Stack**: Rust/Tauri 2.0 (desktop) + SvelteKit/Svelte 5 adapter-static (frontend) + Rust graft-cli + Python FastAPI reference backend + curation scripts (PEP 723)
+- **Architecture**: Contracts Over Wiring — typed boundaries, explicit data flow, frozen dataclasses
+- **Development Branch**: `feature/graft-app-foundation`
 
 ---
 
@@ -14,33 +14,40 @@
 **Risk**: Credential exposure, security breach
 
 ✅ CORRECT:
-```rust
-fn get_config() -> GraftResult<Config> {
-    let token = std::env::var("GITLAB_TOKEN")
-        .map_err(|_| GraftError::Config("GITLAB_TOKEN not set".into()))?;
-    Ok(Config { token })
-}
+```python
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+API_KEY = os.getenv('API_KEY')
+SECRET_KEY = os.getenv('SECRET_KEY')
 ```
 
 ❌ WRONG:
-```rust
-const GITLAB_TOKEN: &str = "glpat-abc123xyz"; // NEVER
+```python
+API_KEY = "sk_live_abc123xyz"
+SECRET_KEY = "my-secret-key-12345"
 ```
 
 **What to look for**:
-- Hardcoded string literals that look like tokens
-- URLs with embedded credentials
-- `.env` files not in `.gitignore`
+- grep for hardcoded URLs, keys, tokens
+- Check .env files are git-ignored
+- Verify environment variable usage
 
 ---
 
 ### 2. Type Safety — No `Any`, Typed Boundaries Everywhere
 **Risk**: Runtime bugs, contract violations, architectural drift
 
-✅ CORRECT (Backend — typed struct):
-```rust
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
-pub struct SyncResult { pub added: Vec<String>, pub removed: Vec<String> }
+✅ CORRECT (Backend — frozen dataclass):
+```python
+from dataclasses import dataclass
+
+@dataclass(frozen=True)
+class SyncResult:
+    added: list[str]
+    removed: list[str]
+    conflicts: list[str]
 ```
 
 ✅ CORRECT (Frontend — Svelte 5 `$props()`):
@@ -54,34 +61,49 @@ pub struct SyncResult { pub added: Vec<String>, pub removed: Vec<String> }
 </script>
 ```
 
-❌ WRONG (Backend — untyped return):
-```rust
-pub fn sync() -> serde_json::Value { ... }
+❌ WRONG (Backend — `Any` type):
+```python
+from typing import Any
+def process(data: Any) -> Any:  # NEVER
+    pass
 ```
 
-❌ WRONG (Frontend — untyped `any`):
-```typescript
-function render(result: any) { /* ... */ }
+❌ WRONG (Frontend — Svelte 4 `export let`):
+```svelte
+<script>
+  export let items;  // Svelte 4 pattern, untyped
+</script>
 ```
 
 **What to look for**:
-- `serde_json::Value` where a typed struct should exist
-- TypeScript `any`
+- `from typing import Any` or `: Any` annotations
+- Functions without type hints or return types
 - Svelte components using `export let` instead of `$props()`
+- Dataclass fields without types
 
 ---
 
 ### 3. Input Validation on All API Endpoints
 **Risk**: Invalid data corruption, type errors, injection attacks
 
-✅ CORRECT (Backend — Rust/axum):
-```rust
-async fn connect_handler(Json(req): Json<ConnectRequest>) -> Result<Json<ConnectResult>, AppError> {
-    if req.target_repo.is_empty() {
-        return Err(AppError::Validation("target_repo required".into()));
-    }
-    run_connect(...).map_err(AppError::Graft)
-}
+✅ CORRECT (Backend — Pydantic model):
+```python
+from pydantic import BaseModel, field_validator
+
+class ConnectRequest(BaseModel):
+    project_path: str
+    remote_url: str
+
+    @field_validator('project_path')
+    @classmethod
+    def validate_path(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError('Project path required')
+        return v.strip()
+
+@app.post("/api/graft/connect")
+async def connect_project(request: ConnectRequest):
+    return graft.connect(request.project_path, request.remote_url)
 ```
 
 ✅ CORRECT (Frontend — Zod schema):
@@ -89,43 +111,56 @@ async fn connect_handler(Json(req): Json<ConnectRequest>) -> Result<Json<Connect
 import { z } from 'zod';
 
 const connectSchema = z.object({
-  targetRepo: z.string().min(1, 'Target repo required'),
-  scionRepo: z.string().min(1, 'Scion repo required'),
-  projectName: z.string().min(1, 'Project name required'),
-  contributor: z.string().min(1, 'Contributor required')
+  projectPath: z.string().min(1, 'Project path required'),
+  remoteUrl: z.string().url('Must be a valid URL')
 });
 ```
 
-❌ WRONG (raw params, no validation):
-```rust
-async fn connect_handler(target: String) -> Json<Value> { ... }
+❌ WRONG (No validation):
+```python
+@app.post("/api/graft/connect")
+async def connect_project(path: str, url: str):
+    return graft.connect(path, url)  # Garbage in!
 ```
 
 **What to look for**:
-- Tauri commands or HTTP routes with raw `String` parameters and no guard-clause validation
-- Frontend forms without Zod schemas
+- All endpoint parameters use Pydantic models
+- Pydantic models use `field_validator` (not deprecated `@validator`)
+- Frontend forms use Zod schemas
+- No bare str/int/float endpoint parameters
 
 ---
 
 ### 4. Typed Contracts — Every Boundary Has Typed Inputs/Outputs
 **Risk**: Hidden contracts, implicit dependencies, exception-as-control-flow
 
-✅ CORRECT:
-```rust
-pub fn run_pull(target: &Path, dry_run: bool) -> GraftResult<PullResult> {
-    Ok(PullResult { updated, skipped, conflicts })
-}
+✅ CORRECT (Result record, not exception):
+```python
+@dataclass(frozen=True)
+class PullResult:
+    updated: list[str]
+    skipped: list[str]
+    conflicts: list[str]
+    success: bool
+
+def pull(project_path: str) -> PullResult:
+    ...
+    return PullResult(updated=updated, skipped=skipped, conflicts=[], success=True)
 ```
 
-❌ WRONG (panic or untyped return):
-```rust
-pub fn run_pull(target: &Path) -> Vec<String> { ... }
+❌ WRONG (Exception as control flow):
+```python
+def pull(project_path: str) -> list[str]:
+    if conflicts:
+        raise ConflictError(conflicts)  # Exits the return contract
+    return updated_files
 ```
 
 **What to look for**:
-- Functions returning `serde_json::Value` or raw strings at domain boundaries
-- `unwrap()` / `expect()` on paths that could realistically fail
-- Missing `GraftResult<T>` wrappers on public `graft-core` functions
+- Functions returning untyped dicts or tuples
+- Business logic raising exceptions for expected outcomes
+- `Any` or missing return types on public functions
+- Boundary functions without explicit input/output types
 
 ---
 
@@ -133,23 +168,25 @@ pub fn run_pull(target: &Path) -> Vec<String> { ... }
 **Risk**: Silent data loss, overwriting local customizations
 
 ✅ CORRECT:
-```rust
-fn classify(path: &str, policy: &Policy) -> GraftResult<Classification> {
-    policy.get(path).ok_or_else(|| GraftError::UnclassifiedFiles(vec![path.to_string()]))
-}
+```python
+policy = load_policy(policy_path)
+for file in cursor_files:
+    classification = policy.get(file)
+    if classification is None:
+        raise UnclassifiedFileError(f"No policy for {file} — add to graft-policy.json")
 ```
 
-❌ WRONG:
-```rust
-fn classify(path: &str, policy: &Policy) -> Classification {
-    policy.get(path).cloned().unwrap_or(Classification::Overwrite)
-}
+❌ WRONG (Default to overwrite):
+```python
+for file in cursor_files:
+    classification = policy.get(file, "sync")  # Silent overwrite of unknown files!
+    sync_file(file, classification)
 ```
 
 **What to look for**:
-- `unwrap_or` defaults that silently overwrite unknown files
-- Missing classification checks before sync operations
-- Any sync path that does not fail on unknown policy entries
+- `policy.get(file, <default>)` with a permissive default
+- Missing files silently skipped during sync
+- Any sync path that doesn't check policy classification
 
 ---
 
@@ -160,105 +197,72 @@ fn classify(path: &str, policy: &Policy) -> Classification {
 
 Run:
 ```bash
-cargo test --workspace
+# Backend
+python -m pytest tests/ -v --cov=src/graft --cov-report=term-missing --cov-fail-under=90
+
+# Frontend
 npm test -- --run --coverage
 ```
 
 Requirements:
 - Unit tests for all graft operations (connect, pull, push, status)
 - Edge case tests (empty repos, missing policy, network failures)
-- Error path tests for every route and Tauri command boundary
+- Error path tests for every API route
 
 ---
 
-### 7. Rust Struct Immutability — Data Models Are Value Types
-**Requirement**: Data models are immutable value types — no mutation methods on data
+### 7. Frozen Dataclasses for Data Models
+**Requirement**: Data models are frozen dataclasses — no methods on data
 
 ✅ CORRECT:
-```rust
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct PolicyEntry { pub path: String, pub classification: Classification }
+```python
+@dataclass(frozen=True)
+class PolicyEntry:
+    path: str
+    classification: str
+    description: str
 ```
 
-❌ WRONG:
-```rust
-impl PolicyEntry { pub fn promote(&mut self) { ... } }
+❌ WRONG (Mutable or methods on data):
+```python
+@dataclass
+class PolicyEntry:
+    path: str
+    classification: str
+
+    def is_protected(self) -> bool:  # Logic belongs in a function, not on data
+        return self.classification == "protect"
 ```
 
 ---
 
-### 8. Error Handling on All Routes
-**Requirement**: All routes and command handlers return typed errors and avoid panic paths
+### 8. Error Handling on All API Routes
+**Requirement**: All endpoints handle errors gracefully with structured responses
 
 ✅ CORRECT:
-```rust
-async fn status_handler(Query(p): Query<StatusParams>) -> Result<Json<StatusDto>, AppError> {
-    run_status(&p.target_repo, None, false).map(|r| Json(r.into())).map_err(AppError::Graft)
-}
+```python
+@router.get("/api/graft/status/{project_id}")
+async def get_status(project_id: str):
+    try:
+        status = graft.status(project_id)
+        if not status:
+            raise HTTPException(status_code=404, detail="Project not found")
+        return status
+    except GraftError as e:
+        logger.error(f"Graft error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 ```
 
-❌ WRONG:
-```rust
-async fn status_handler(Query(p): Query<StatusParams>) -> Json<StatusDto> {
-    Json(run_status(&p.target_repo, None, false).unwrap().into())
-}
+❌ WRONG (No error handling):
+```python
+@router.get("/api/graft/status/{project_id}")
+async def get_status(project_id: str):
+    return graft.status(project_id)  # What if fails?
 ```
 
 ---
 
-### 9. Guard Clause Efficiency (🟡 MEDIUM)
-**Risk**: Hidden performance costs and repeated expensive operations
-
-❌ WRONG (repeats expensive setup):
-```rust
-fn run_pull(target: &Path) -> GraftResult<PullResult> {
-    let repo = Repository::open(target)?; // expensive
-    if repo.head_is_unborn() { return Err(...); }
-    let context = build_sync_context(target, ...)?; // opens again
-}
-```
-
-✅ CORRECT (build once, guard on context):
-```rust
-fn run_pull(target: &Path) -> GraftResult<PullResult> {
-    let context = build_sync_context(target, ...)?;
-    if context.repo.head_is_unborn() { return Err(...); }
-}
-```
-
-**What to look for**:
-- `Repository::open()` called more than once in a call chain
-- File I/O in guards repeated again in main body
-- JSON deserialization in a guard followed by re-deserialization
-
----
-
-### 10. No Composition Duplication (🟠 HIGH)
-**Risk**: Validation drift, inconsistent behavior across surfaces
-
-❌ WRONG (duplicated domain validation in composition layer):
-```rust
-async fn connect_handler(Json(req): Json<ConnectRequest>) -> ... {
-    if !Path::new(&req.target_repo).exists() { return Err(...); } // graft-core checks this
-    run_connect(...)
-}
-```
-
-✅ CORRECT:
-```rust
-async fn connect_handler(Json(req): Json<ConnectRequest>) -> ... {
-    run_connect(...).map_err(AppError::Graft)
-}
-```
-
-**What to look for**:
-- Path existence checks duplicated across `graft-http`, `graft-cli`, or Tauri commands
-- Git repo validation duplicated outside `graft-core`
-- Policy loading and classification logic repeated in surface layers
-
----
-
-### 11. Script Portability (PEP 723)
+### 9. Script Portability (PEP 723)
 **Requirement**: CLI scripts use PEP 723 inline metadata, run with `uv run --script`
 
 ✅ CORRECT:
@@ -272,9 +276,9 @@ import sys
 from pathlib import Path
 ```
 
-❌ WRONG (workspace-coupled):
+❌ WRONG (Workspace-coupled):
 ```python
-from src.graft.models import SyncResult
+from src.graft.models import SyncResult  # Couples to workspace layout!
 ```
 
 **What to look for**:
@@ -286,7 +290,7 @@ from src.graft.models import SyncResult
 
 ## MEDIUM Priority (🟡 Should Fix Soon)
 
-### 12. No Hardcoded Theme Values — Use Design Tokens
+### 10. No Hardcoded Theme Values — Use Design Tokens
 **Requirement**: All styling via CSS custom properties and design tokens, never hardcoded values
 
 ✅ CORRECT:
@@ -302,14 +306,14 @@ from src.graft.models import SyncResult
 }
 ```
 
-❌ WRONG:
+❌ WRONG (Hardcoded):
 ```svelte
 <div style="background: #ffffff; padding: 16px; border-radius: 8px;">
 ```
 
 ---
 
-### 13. Type All Component Props — Svelte 5 `$props()`
+### 11. Type All Component Props — Svelte 5 `$props()`
 **Requirement**: TypeScript types on all props using Svelte 5 runes
 
 ✅ CORRECT:
@@ -324,7 +328,7 @@ from src.graft.models import SyncResult
 </script>
 ```
 
-❌ WRONG (untyped or Svelte 4):
+❌ WRONG (Untyped or Svelte 4):
 ```svelte
 <script>
   export let title;
@@ -334,7 +338,7 @@ from src.graft.models import SyncResult
 
 ---
 
-### 14. Token Budget Awareness
+### 12. Token Budget Awareness
 **Requirement**: Canonical content earns its place — every token costs across all future sessions
 
 **What to look for**:
@@ -357,14 +361,12 @@ from src.graft.models import SyncResult
 🟠 **HIGH** (Should Fix Before Merge)
 - Test coverage below 90%
 - Mutable data models
-- Missing error handling on routes
+- Missing error handling on API routes
 - Non-portable scripts
-- Composition duplication across layers
 
 🟡 **MEDIUM** (Should Fix Soon)
 - Hardcoded theme values
 - Untyped or Svelte 4 component props
-- Guard clause inefficiency and duplicated expensive setup
 - Token budget violations
 
 🟢 **LOW** (Optional)
@@ -378,22 +380,20 @@ from src.graft.models import SyncResult
 
 ### Security (MUST PASS)
 - [ ] No hardcoded secrets or credentials
-- [ ] Input validation on all endpoints (Rust guard clauses + Zod)
+- [ ] Input validation on all endpoints (Pydantic + Zod)
 - [ ] No sensitive data in logs
 
-### Rust Backend (IF APPLICABLE)
-- [ ] All public graft-core functions return GraftResult<T>
-- [ ] No unwrap()/expect() on non-fatal paths
-- [ ] Error variants carry path and source context for actionable messages
-- [ ] No serde_json::Value returns where typed structs exist
-- [ ] No logic duplication between graft-http/graft-cli/Tauri and graft-core
-- [ ] Guards do not re-open git repos or re-parse JSON the body will also parse
-- [ ] Data structs derive Debug, Clone, Serialize, Deserialize — no mutation methods
+### Contracts (MUST PASS)
+- [ ] All functions have typed inputs and outputs
+- [ ] No `Any` types
+- [ ] Data models are frozen dataclasses
+- [ ] Business outcomes as result records, not exceptions
+- [ ] Sync operations fail-closed on unclassified files
 
 ### Quality (SHOULD PASS)
 - [ ] Test coverage >= 90%
 - [ ] Edge cases tested (empty, missing, network failure)
-- [ ] Error handling on all routes
+- [ ] Error handling on all API routes
 - [ ] Scripts use PEP 723, run with `uv run --script`
 
 ### Frontend (IF APPLICABLE)
