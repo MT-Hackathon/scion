@@ -246,9 +246,9 @@ graph TD
 | **Drifted (Outbound)** | The local project has "un-pushed" knowledge that has not been curated. A `graft push` is recommended. |
 | **Synced** | The local environment perfectly reflects the canonical intent. No changes are pending in either direction. |
 
-## 9. The Three Surfaces of Engagement
+## 9. The Four Surfaces of Engagement
 Rootstock logic is encapsulated in the Rust `graft-core` crate and exposed
-through three distinct interfaces.
+through four distinct interfaces.
 
 1.  **The Desktop App (Tauri 2.0)**: The primary user-facing surface. It wraps
     the SvelteKit UI in an installable desktop shell, supports system tray
@@ -262,6 +262,15 @@ through three distinct interfaces.
     about the curation lifecycle, execute `graft` commands, and self-correct
     when it detects that its environment is out of sync. It makes the system
     self-healing.
+4.  **The MCP Server**: The same `rootstock` binary doubles as an MCP stdio
+    server when invoked with `--mcp`. The MCP client (Cursor, Claude Desktop)
+    spawns it as a child process — no port bound, no network exposure. It
+    exposes 8 always-on gateway tools that progressively unlock to 23 via
+    category discovery. This surface makes the ogham memory layer accessible
+    mid-session (write, recall, capture, sync) rather than only at session
+    boundaries. The tray app and MCP server are independent OS processes;
+    each has its own lifetime. See [rootstock-mcp skill](../../../skills/rootstock-mcp/SKILL.md)
+    for architecture, tool catalog, and client configuration.
 
 ## 10. Phased Architecture
 The Rootstock system is designed to evolve in three distinct phases as it

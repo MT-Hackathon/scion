@@ -10,7 +10,7 @@ Knowledge curation and distribution system for shared `.cursor` and `.claude` AI
 
 **Hub**: The `scion` repo (`git@gitlab.com:cdo-office/scion.git`, public mirror at `github.com/MT-Hackathon/scion`) is the canonical knowledge store — it holds only `.cursor/` content, `graft-policy.json`, and `.rootstockignore`. The rootstock app repo connects to scion as a spoke project, just like every other project. `main` branch is the golden image; contributor branches (`contributor/{contributor}/{project_id}`) hold unreviewed submissions.
 
-**Stack**: Desktop: Rust/Tauri 2.0 | Frontend: SvelteKit/Svelte 5 (adapter-static) | CLI: Rust/clap | Governance: scion repo's `.cursor/`
+**Stack**: Desktop: Rust/Tauri 2.0 | Frontend: SvelteKit/Svelte 5 (adapter-static) | CLI: Rust/clap | MCP: `rootstock --mcp` (same binary, stdio, no port) | Governance: scion repo's `.cursor/`
 
 ### The 9 Invariants
 
@@ -48,5 +48,6 @@ PEP 723, `uv run --script`, no workspace-coupled imports. `uv run --script <path
 | [Curation Protocol](../../skills/rootstock/resources/curation-protocol.md) | Taxonomy, quality rubric, structured output contract |
 | [Graft Policy](../../skills/rootstock/resources/graft-policy.json) | File lifecycle classifications |
 | [Rootstock Skill](../../skills/rootstock/SKILL.md) | Script manifest, participation model |
+| [Rootstock MCP Skill](../../skills/rootstock-mcp/SKILL.md) | MCP server architecture, tool surface, client config |
 
 </ANCHORRULE-ROOTSTOCK-SYSTEM>

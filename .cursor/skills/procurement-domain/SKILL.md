@@ -73,7 +73,7 @@ All domain display names (statuses, roles, categories) are server-driven via `/a
 
 ## Cross-References
 
-- [Rootstock System Rule](../../rules/005-rootstock-system/RULE.mdc) — Always-on safety invariants
+- [Rootstock System Rule](../../rules/200-rootstock-system/RULE.mdc) — Always-on safety invariants
 - [Security Skill](../security/SKILL.md) — Identity flow, auth chain, provisioning gate details
 - [Product Management Skill](../product-management/SKILL.md) — Feature governance, checklists, acceptance criteria
 

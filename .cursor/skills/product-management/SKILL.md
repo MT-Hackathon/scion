@@ -107,7 +107,7 @@ Maps Feature Card success criteria to implemented code locations.
 
 ## Cross-References
 
-- [Rootstock System Rule](../../rules/005-rootstock-system/RULE.mdc) — Always-on safety invariants
+- [Rootstock System Rule](../../rules/200-rootstock-system/RULE.mdc) — Always-on safety invariants
 - [Planning Skill](../planning/SKILL.md) — Decomposition and delegation patterns
 - [Angular Testing Skill](../angular-testing/SKILL.md) — Test implementation patterns
 - [Accessibility Skill](../accessibility/SKILL.md) — 508 compliance requirements
