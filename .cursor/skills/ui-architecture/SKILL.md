@@ -55,18 +55,20 @@ Framework-agnostic decisions about how the page is structured, how layers intera
 
 ## Z-Index Layering System
 
-Canonical layers — use CSS custom properties, not raw integers:
+Canonical layers — defined as CSS custom properties in `tokens.css` `:root`. Reference via Tailwind arbitrary value syntax: `z-[var(--z-modal)]`. Never use raw integers.
 
 ```css
---z-content:    0     /* Default content */
---z-sticky:     10    /* Sticky headers, toolbars */
---z-dropdown:   20    /* Select menus, popovers */
---z-drawer:     30    /* Side panels (push mode — rarely needs z-index) */
---z-sidebar:    40    /* App navigation sidebar */
---z-modal:      50    /* Modals, overlay drawers, dialogs */
---z-toast:      60    /* Toast notifications */
---z-critical:   9999  /* Error overlays, crash screens */
+--z-content:    0;    /* Default content */
+--z-sticky:     10;   /* Fixed headers, mobile top bar */
+--z-dropdown:   20;   /* Select menus, popovers */
+--z-drawer:     30;   /* Reserved; push panels are in-flow and rarely need z-index */
+--z-sidebar:    40;   /* App navigation sidebar */
+--z-modal:      50;   /* Modals, overlay drawers, dialogs, portaled dropdowns */
+--z-toast:      60;   /* Toast notifications */
+--z-critical:   9999; /* Error overlays, crash screens */
 ```
+
+**Implementation note on `--z-drawer`**: Push-mode panels are in-flow content and rarely need an explicit z-index. The `--z-drawer` token at 30 is reserved for edge cases, not for overlay drawers (which use `--z-modal`). Portaled dropdowns and selects may need `--z-modal` if they must appear above dialogs.
 
 **Anti-pattern**: z-index arms race — incrementing z-index to "fix" stacking. If two elements compete for z-index, one of them is in the wrong stacking context.
 

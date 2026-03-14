@@ -46,5 +46,6 @@ PEP 723, `uv run --script`, no workspace-coupled imports. `uv run --script <path
 | [Curation Protocol](../../skills/rootstock/resources/curation-protocol.md) | Taxonomy, quality rubric, structured output contract |
 | [Graft Policy](../../skills/rootstock/resources/graft-policy.json) | File lifecycle classifications |
 | [Rootstock Skill](../../skills/rootstock/SKILL.md) | Script manifest, participation model |
+| [Rootstock MCP Skill](../../skills/rootstock-mcp/SKILL.md) | MCP server architecture, tool surface, client config |
 
 </ANCHORRULE-ROOTSTOCK-SYSTEM>

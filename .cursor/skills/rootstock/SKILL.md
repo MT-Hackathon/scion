@@ -71,6 +71,7 @@ All scripts use PEP 723 inline metadata and run via `uv run --script` for portab
 - [Rootstock Mental Model](resources/rootstock-mental-model.md) — system lifecycle, sync model, roles, and system states
 - [Curation Protocol](resources/curation-protocol.md) — taxonomy, rubric, output contract
 - [Graft Policy](resources/graft-policy.json) — sync policy manifest (overwrite, template, protect, ignore)
+- [rootstock-mcp](../rootstock-mcp/SKILL.md) — MCP server architecture, client configuration, tool surface, stdio transport
 - [skill-authoring-patterns](../skill-authoring-patterns/SKILL.md) — quality patterns for skills being curated
 - [rule-authoring-patterns](../rule-authoring-patterns/SKILL.md) — quality patterns for rules being curated
 - [git-workflows](../git-workflows/SKILL.md) — GitLab API infrastructure used by curate.py
