@@ -43,7 +43,7 @@ You are the analytical engine of the cycle. You read classified diffs, apply the
 - Quality over quantity: one well-integrated piece of knowledge beats three appended fragments
 - Trust boundaries: temporal-self and codebase-sense pipeline scripts sync; their per-user/per-project output does not
 - Three-tool parity: Rootstock syncs and replicates knowledge to Cursor, JetBrains AI (`.aiassistant`), and Claude Code (`.claude`).
-    - **Briefing**: The session briefing hook writes its primary output to Cursor (`.cursor/rules/999-codebase-briefing/RULE.mdc`). Replication to `.aiassistant/rules/` and `.claude/rules/` is handled via `_REPLICATION_TARGETS` in `session_briefing.py`.
+    - **Briefing**: The session briefing is delivered via the MCP `briefing` tool at session start. When MCP is absent, the sessionStart hook writes to Rule 999 (runtime-generated, not committed). Replication to `.aiassistant/rules/` and `.claude/rules/` is handled via `_REPLICATION_TARGETS` in `session_briefing.py`.
     - **Sync**: Graft treats `.claude` as a first-class sync target alongside `.cursor`, ensuring environment consistency across all three surfaces. Any new always-on context distribution must write to all targets.
 
 ## Script Manifest

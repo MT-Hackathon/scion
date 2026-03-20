@@ -126,20 +126,25 @@ Push-mode panels do NOT use portal — they are in-flow flex siblings.
 - Prefer flex layouts for variable-height form fields.
 - Use grid only when strict row/column alignment is required.
 
-## HTTP Communication Model (MANDATED)
+## Backend Communication Model (MANDATED)
 
-- UI communicates with backend exclusively through HTTP fetch to `/api/*`; no custom bridges.
-- Base URL must come from `VITE_API_URL`; request headers include content-type and required session headers.
-- Backend envelope contract:
-  - `success: boolean`
-  - `data` on success
-  - `error: { code, message }` on failure
+The transport depends on the deployment target. The contract principles are the same regardless of transport.
+
+### Tauri Desktop (invoke)
+- UI communicates via Tauri IPC (`invoke()`). Do not call generated bindings directly from route components — use handwritten domain wrapper modules (see tauri-development skill, IPC Domain Wrapper Pattern) that route through a shared IPC helper with timeout + error normalization.
+- Every IPC call that touches a potentially slow backend path must race against a timeout (30s default). Without this, a slow response hangs the UI with no recovery — no spinner, no error, no way back.
 - Surface backend failures in UI; do not swallow or silently mask errors.
-- Type-check backend responses with TypeScript unions and/or Zod parsing where risk is high.
 
-### Timeouts and Polling
+### HTTP (web deployments)
+- UI communicates with backend through HTTP fetch to `/api/*`.
+- Base URL must come from `VITE_API_URL`; request headers include content-type and required session headers.
+- Backend envelope contract: `success: boolean`, `data` on success, `error: { code, message }` on failure.
 - Use `AbortController` for explicit request timeout control.
 - Default timeout strategy: fast-start requests around 5s; increase up to 30s for long polling/backoff loops.
+
+### Both transports
+- Surface backend failures in UI; do not swallow or silently mask errors.
+- Type-check backend responses with TypeScript unions and/or Zod parsing where risk is high.
 - Retry logic may exist in UI, but never suppress terminal backend errors.
 
 ## Loading and Display States (MANDATED)
@@ -152,6 +157,10 @@ Push-mode panels do NOT use portal — they are in-flow flex siblings.
   - Empty
   - Populated
 - Never show stale populated content beneath loading or empty state views.
+
+### Toast / Notification (svelte-sonner)
+- `unstyled: true` strips `pointer-events` CSS from both the toaster container and individual toast items. In a Tauri WebView, action button clicks (Copy, Close) fall through to the window background.
+- Fix: `pointer-events: none` on `[data-sonner-toaster]` and `pointer-events: auto` on `[data-sonner-toast]` and `[data-button]`.
 
 ## Template Rendering Performance (MANDATED)
 
@@ -170,7 +179,7 @@ Before adding or refactoring Svelte forms/components, search canonical implement
 
 ## Prohibited Patterns
 
-- No native/desktop wrappers, IPC bridges, window hacks, or non-HTTP transport from UI.
+- No raw `invoke()` calls from route components — use typed domain wrapper modules (see tauri-development skill). For HTTP deployments, no custom bridges or window hacks.
 - No inline error swallowing or hidden backend failures.
 - No hardcoded color values where shared tokens already cover the need.
 - No inline hex/rgb color literals or per-component color variable systems.
@@ -180,6 +189,12 @@ Before adding or refactoring Svelte forms/components, search canonical implement
 - No bypassing settings/token synchronization flow.
 - No `goto()` in `onMount` for route redirects; use SvelteKit server-side `redirect()`.
 - For layout-related prohibited patterns (semantic components owning viewport geometry, transition-colors on structural elements, etc.), see `ui-architecture` Prohibited Patterns.
+
+## Reference Implementations (start here for new pages)
+These are copy-paste starting points. Include them in executor briefs as pattern anchors.
+- `resources/page-shell-template.svelte` — **canonical page shell** (`scroll-area h-full overflow-y-auto`, `max-w-6xl` layout). Use for all non-settings pages.
+- `resources/settings-page-template.svelte` — **FormPage-based settings page** (title header, form sections, sticky actions). Use for settings/configuration pages.
+- `resources/state-machine-pattern.svelte` — **multi-step state machine** ($state discriminated union, phase-gated rendering, no boolean flag soup). Use whenever a page has mutually exclusive phases.
 
 ## Resources
 - `resources/reference-tech-stack.md` — SvelteKit architecture and environment/deployment patterns

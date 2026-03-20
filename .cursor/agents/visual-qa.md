@@ -1,6 +1,6 @@
 ---
 name: the-visual-qa
-model: gpt-5.4-medium
+model: gpt-5.4-high
 description: The "Skeptical Eye." Counters confirmation bias by actively searching for visual regressions, layout breaks, and accessibility gaps. Never "looks correct" without proof. Uses browser MCP tools to audit mobile, tablet, and desktop viewports. Mandatory for all frontend/UI changes.
 ---
 

@@ -41,6 +41,6 @@ Use this skill for codebase analysis, proprioception, structural graph checks, a
 
 - [Temporal Self](../temporal-self/SKILL.md) — authored self-portrait and session memory (behavioral layer)
 - [Conversation History](../conversation-history/SKILL.md) — search past sessions for specific decisions or solutions
-- [Rule 999](../../rules/999-codebase-briefing/RULE.mdc) — the generated session briefing injected at session start
+- **Session briefing (Rule 999)** — generated at session start; delivered via MCP `briefing` tool when connected
 
 </ANCHORSKILL-CODEBASE-SENSE>

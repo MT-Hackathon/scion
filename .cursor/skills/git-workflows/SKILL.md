@@ -27,7 +27,7 @@ Automate issue management, pipelines, and cross-platform sync across our multi-r
 - **Unified Interface**: All new scripts follow a standard `<action> [args]` pattern and share core options.
 
 ## Script Reference
-All scripts run via `uv run .cursor/skills/git-workflows/scripts/<script_name>.py`.
+All scripts run via `uv run .cursor/skills/git-workflows/scripts/git-issue.py` (or other scripts — see sections below).
 
 ### git-issue.py
 Manage issues across GitLab/GitHub. Create, update, close, list, comment, and bulk triage.

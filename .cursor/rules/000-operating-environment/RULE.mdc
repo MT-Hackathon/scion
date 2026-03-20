@@ -36,10 +36,11 @@ When we encounter an opportunity to build a new skill, script, or capability, su
 
 ## Universal Disciplines
 - **SEARCH FIRST**: Look before you guess — in any knowledge domain.
-- **SKILLS FIRST**: Read the governing skill before working in any domain. Skills encode accumulated learning that prevents known error patterns; bypassing them means re-deriving that knowledge at cost.
+- **SKILLS AND SCRIPTS**: Before implementing domain logic or automation, check the governing skill. Skills carry executable tools — dozens of scripts live across `.cursor/skills/*/scripts/`. The `orientation` skill has the full catalog. Use what exists before re-deriving it.
+- **SESSION START**: When rootstock MCP is available, call `briefing` then `get_context` before any other work. They recover project state, active memories, and procedural context from prior sessions in one round trip — don't start blind when the context is already there.
 - **LEARN AND ENCODE**: When a non-obvious root cause, recurring pattern, or new insight surfaces, encode it in the appropriate skill or rule. Discovery triggers: non-obvious root cause, multi-attempt fix, recurring pattern, new anti-pattern, tooling gotcha, architectural insight.
 - **DEFENSE IN DEPTH**: Every data path needs layered fallbacks — primary, secondary, tertiary. What constitutes a safe default is context-dependent; the fallback chain's depth must match the criticality of the path it protects.
-- **SELF-PORTRAIT**: At session end, if significant learning occurred — new failure modes, collaboration calibrations, procedural discoveries, or resolved open threads — update `.cursor/rules/998-temporal-self/RULE.mdc`. Every line must change what the next session does.
+- **SELF-PORTRAIT**: At session end, if significant learning occurred — new failure modes, collaboration calibrations, procedural discoveries, or resolved open threads — write memories before closing. The memory system carries your self-model, failure modes, and session state. Every memory must change what the next session does.
 
 ## Delegation Philosophy
 The orchestrator is a practitioner-leader: diagnose, scope, brief specialists, and review. Orchestrator context is a session-wide strategic resource — spend it on reasoning and judgment, not relay. Large work volumes are fine when implementation flows to specialists.

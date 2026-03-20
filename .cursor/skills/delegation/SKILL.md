@@ -42,29 +42,38 @@ The code pipeline separates production from review to avoid evaluating your own 
 - **Reference, Don't Absorb**: Point to files/plans. Never read content just to relay it.
 - **Writable File Set (WFS) Contract**: Parallel executors must have exclusive file sets. Overlap requires serialization.
 - **Fresh vs. Resume**: Use `fresh` for atomic work; `resume` for work benefiting from dialogue history.
-- **Self-Verification** (executor responsibility — these are not orchestrator actions): Agents must run the full verification stack for their language before returning. Coverage regressions are executor responsibility; QA validates comprehensively. Static cadence and tooling are language-skill-governed; the commands below are illustrative reference only — consult the language skill for the authoritative gate sequence.
+- **Self-Verification** (executor responsibility — these are not orchestrator actions): Language-specific. Rust is the exception — see Rust Protocol below. All other stacks:
   - **Backend lint**: `cd app/backend && uv run ruff check src/` — ruff is a uv tool, not a Python package; `python -m ruff` will fail.
   - **Backend type check**: `ReadLints` on all WFS files PLUS every file that imports a changed module. Type errors propagate through the import graph — a dataclass field change in `models.py` surfaces in `push.py` even if `push.py` is not in your WFS. Scope too narrow = false clean.
   - **Backend tests**: `cd app/backend && python -m pytest tests/ --tb=short -q`
   - **Frontend lint**: `cd app/frontend && npm run lint`
   - **Frontend type check**: `cd app/frontend && npx svelte-kit sync && npm run check`
   - **Frontend tests**: `cd app/frontend && npm test -- --run`
-  - **Rust**: `cargo check --workspace && cargo clippy --workspace -- -D warnings && cargo test --workspace`
-- **Rust Compilation Boundaries**: When delegating Rust work, crate boundaries are the natural parallelization unit:
-  - **One executor per crate**: Own a complete logical unit — one crate or one module with its tests. Two executors in the same crate risk half-written source breaking each other's compilation.
-  - **Serialize `target/`**: Parallel `cargo check`/`cargo build` commands in the same workspace file-lock each other. Executors must serialize compilation or use isolated `CARGO_TARGET_DIR` values.
-  - **Code and tests are one brief**: An executor implementing `pull.rs` also writes its unit tests. Never split code and tests across executors for the same module — they compile together.
-  - **Cross-crate work is safely parallel**: Executors can work on `graft-core` and `graft-cli` simultaneously. Crate isolation is the natural parallelization boundary.
-  - **The orchestrator does not compile**: Following the 80/20 rule, executors self-verify with the Rust gate above before returning.
+- **Rust Execution Protocol** (non-negotiable — cargo collisions on Windows destroy drives):
+  - **Executors write code only.** Do NOT run `cargo check`, `cargo clippy`, `cargo build`, or any cargo command. This is an absolute rule, not a preference.
+  - **All Rust compilation is owned by a single QA agent** dispatched after all executors complete. One cargo process at a time. QA runs `cargo check`, then `cargo clippy`, then relevant tests — in a single sequential agent.
+  - **One logical contract per executor brief**: One struct, one module, one command handler, one feature. Narrow scope produces high-quality output from a fast model; wide scope produces over-engineered output from any model.
+  - **One executor per crate boundary**: If work touches two crates, use two sequential executors or one executor with explicit file ownership. Executors in the same crate must have exclusive file sets — partial writes break QA's compilation run.
+  - **Rationale**: Windows NTFS hard link contention + Defender scanning causes a death spiral when two cargo processes share `target/`. The system grinds, processes hang, `taskkill` itself hangs. There is no safe parallel cargo on Windows.
 - **QA Fix Authority**: QA fixes bugs within scope directly. Escalate only for architectural implications.
 - **One Round-Trip**: If a delegation fails, improve the brief rather than entering a reactive relay cycle.
 
 ## Delivery Pipeline
 Encode specification-driven incremental delivery:
 1. **Research & Architect**: Filter noise, define boundaries, research anti-patterns for the work type, and consult the Architect for fresh-eyes reasoning.
-2. **Slice Decomposition**: Break work into independent, testable slices.
-3. **Incremental Execution**: One executor per slice; writes tests and code together to maintain green build signal.
-4. **Unified QA & Learn**: Two-pass QA close — static (language-specific tooling per the language skill) followed by qualitative (principles compliance per Two-Mode QA Protocol above). If qualitative fixes anything, static re-runs. Curator proposes durable learning updates after QA closes clean.
+2. **Slice Decomposition**: Break work into slices where each slice has a single coherent concern and fully specified contracts. File count is not the constraint — decision density is. A brief covering 3–4 files of the same concern with tight contracts is better than 3 single-file briefs with vague direction. The goal: no architectural decisions remain open inside the brief for the executor to invent.
+3. **Parallel Execution (non-Rust) / Sequential Execution (Rust)**: For non-Rust stacks: one executor per slice with non-overlapping file sets, can run in parallel. For Rust: executors write code only (no cargo), can run in parallel with non-overlapping file sets — all compilation is deferred to a single QA pass.
+4. **Unified QA & Learn**: Two-pass QA close — **Gate A** (mechanical correctness + test quality: compilation, lint, test wiring, test anti-pattern audit) then **Gate B** (holistic judgment: "is this actually good code?", security boundary enforcement, design fitness). Gate A has fix authority for mechanical issues; Gate B has fix authority for correctness and structural issues, flags architectural concerns. Gate B skips only for pure mechanical changes with no design decisions. If either gate makes fixes, Gate A re-runs before the phase closes. Curator proposes durable learning updates after QA closes clean. See [qa-tester.md](../../agents/qa-tester.md) for the authoritative gate definitions.
+
+## Model Assignment
+**Do not specify a `model` parameter in Task tool calls.** Agent definitions in `.cursor/agents/` govern model selection. Passing `model` to the Task tool silently overrides the agent definition and defeats the purpose of per-agent model configuration.
+
+The assembly line principle applies through agent definitions, not Task parameters: executor agents are configured for a fast model (narrow, atomic execution); QA is configured for a capable model (holistic judgment, cross-file reasoning, fix authority). Let those configurations run. Overriding them is a harness break.
+
+## Cursor Agent Type Bug (Critical — Will Recur)
+The Task tool intermittently rejects valid `subagent_type` values with a false error: `Invalid enum value. Expected 'generalPurpose' | 'explore' | 'shell' | 'browser-use', received 'the-executor'`. **This error is a lie.** Cursor internally stores all agents as generalPurpose, so the validation message incorrectly lists only base types.
+
+**The fix is always: retry the same call immediately.** The specialized types (`the-executor`, `the-qa-tester`, `the-architect`, `the-curator`, `the-author`, `the-researcher`, `the-visual-qa`) are valid and will succeed on retry. Never fall back to `generalPurpose` — doing so bypasses the agent definition's model selection, behavioral constraints, and self-verification mandates. Every agent that runs as `generalPurpose` instead of its defined type is running without its governance layer.
 
 ## Warning Signs (Stop Signs)
 - **The Build Loop Trap**: Running `cargo build`, `npm run`, `cargo tauri dev`, or any state-modifying shell command directly. Process launches, DLL errors, path debugging, config edits — all Shell or Executor territory. Delegate at the first attempt. The circuit breaker fires on attempt one, not after three iterations reveal the scope.
@@ -91,11 +100,14 @@ QA owns all errors found, not just errors introduced by the current change. When
 2. Run `ReadLints` with the broadest reasonable scope: WFS files plus all files that import changed modules. A clean ReadLints on only your WFS files is a false signal when the changed modules have wide import reach.
 3. Pre-existing errors are in scope. "We didn't cause it" is not a valid disposition once QA has eyes on the code.
 
-## Two-Mode QA Protocol
+## Two-Mode QA Protocol (Gate A → Gate B)
 
-Every phase closes with two QA passes in sequence. Both are always mandatory. The language skill governs what "static" means for that stack.
+Every phase closes with two QA passes in sequence. Both are always mandatory unless Gate B skips (pure mechanical changes only). The authoritative gate definitions live in [qa-tester.md](../../agents/qa-tester.md). The language skill governs what "static" means for that stack.
 
-### Static QA
+**Gate A** (mechanical correctness + test quality) = Static QA + test anti-pattern audit. Always runs first. Fix authority for compilation, lint, test wiring, and test quality failures.
+**Gate B** (holistic judgment) = Qualitative QA. "Is this actually good code?" Fix authority for correctness and structural issues; flags architectural concerns.
+
+### Static QA (Gate A)
 Executor self-verification runs static gates before returning — this is not the orchestrator's job. QA runs one terminal static pass after all executor rounds are complete. The orchestrator's permitted action is exactly: run one check, read the headline, stop. Never diagnose individual errors. Never enter the fix loop. The diagnostic loop is QA territory regardless of how small the error looks.
 
 Static cadence varies by language:
@@ -103,8 +115,8 @@ Static cadence varies by language:
 - **SvelteKit**: per-phase (`npm run lint && npx svelte-kit sync && npm run check`). No compile-time guarantees for template correctness.
 - **Python**: per-phase, with basedpyright scope including the full import graph — not just WFS files. `ruff check` alone is insufficient; the two tools have non-overlapping coverage. **Note**: No python-development skill exists yet. Python QA patterns are currently scattered across this skill and the environment skill. A `python-development` skill encoding per-phase static cadence, basedpyright import-graph scope, and pytest strategy is the correct follow-on — the worst gravity well instances in session history (session 5cd9d6f8, 23 basedpyright errors diagnosed directly by orchestrator) occurred in Python work without this governance layer.
 
-### Qualitative QA
-Always the terminal step of any phase, for every language. The compiler enforces memory safety and types; it does not enforce design. Qualitative QA fills that gap.
+### Qualitative QA (Gate B)
+Always the terminal step of any phase, for every language (skip only for pure mechanical changes with no design decisions). The compiler enforces memory safety and types; it does not enforce design. Gate B fills that gap.
 
 Checks (apply Power of 10 principles):
 - Single control flow — guard clauses, no nested conditions where a guard suffices

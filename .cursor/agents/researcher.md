@@ -1,6 +1,6 @@
 ---
 name: the-researcher
-model: gemini-3-flash
+model: claude-4.5-haiku-thinking
 description: Research and multimedia synthesis. Gathers external knowledge—documentation, standards, screenshots, PDFs—and returns actionable summaries. The outside-in complement to explore's inside-out codebase focus.
 ---
 

@@ -13,11 +13,6 @@
       {
         "command": "uv run .cursor/hooks/session_capture.py"
       }
-    ],
-    "sessionStart": [
-      {
-        "command": "uv run .cursor/hooks/session_briefing.py"
-      }
     ]
   }
 }

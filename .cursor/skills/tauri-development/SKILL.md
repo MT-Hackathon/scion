@@ -82,6 +82,9 @@ Tauri commands return `Result<T, E>` where both `T` and `E` must implement `Seri
 
 **tauri-specta bindings are generated at runtime, not build time.** The `Builder::export()` call is gated by `#[cfg(debug_assertions)]` and runs inside `lib.rs::run()`. TypeScript bindings are written to disk only when the app successfully starts in development mode. If the app cannot start (DLL load failure, frontend not running, `beforeDevCommand` misconfiguration), bindings will not regenerate. Symptom of stale bindings: the app compiled clean but TypeScript types are outdated. Fix: get the app to start, not the build.
 
+**`invoke()` return contract**: `invoke<T>()` returns `T` directly on success and rejects with `E` on error. The tauri-specta generated bindings wrap this in `{ status: 'ok', data: T } | { status: 'error', error: E }`. Hand-written modules that call `invoke()` directly (bypassing generated bindings) receive the raw `T`. Anti-pattern: unwrap functions that expect the wrapper format when calling `invoke()` directly — they silently discard the actual returned data.
+
+- **IPC Domain Wrapper Pattern**: Do not call generated tauri-specta bindings from route components. Create handwritten domain modules (e.g., `lib/tauri/mcp.ts`, `lib/tauri/user-memories.ts`) that import types from bindings but route all actual invocations through a shared IPC helper with timeout + error normalization. The generated bindings have no timeout — a slow backend path or stalled connection hangs the UI with no recovery. The wrapper is the application boundary; the generated bindings are type artifacts. This refactor is cheap when few routes import bindings directly and expensive when many do — do it early.
 - **Dual-Mode Transport Safety**: When implementing a fallback transport (Tauri + HTTP), you must discriminate between framework errors and domain errors.
 - **Framework Error**: `invoke()` throws a string if a command is not registered (e.g., "Command X not found").
 - **Domain Error**: The command exists but returned a `CommandError` struct.
@@ -112,13 +115,21 @@ Initialize the subscriber in `lib.rs::run()` gated on `RUST_LOG` or a runtime fl
 
 ## Testing & Verification
 
-Test Tauri commands by testing the underlying `graft-core` functions directly. Command wrappers should be thin enough to require no independent tests beyond IPC contract verification.
+Library-level tests (`graft-core`) verify logic correctness, not wiring correctness. A command that calls the wrong `tauri::State<T>` or wrong DB path produces correct SQL on the wrong store — the library test passes while the production path is broken.
+
+- **Command-level**: Verify each `#[tauri::command]` reaches the correct state/store, not just that the underlying function returns the right value.
+- **Frontend IPC**: Mock at the `@tauri-apps/api/core` `invoke` boundary, not at the wrapper function level. Mocking `getMcpStatus()` tests the caller; the IPC module code never runs and its contract is untested.
+- **State migrations**: When a state accessor changes (e.g., moving to a new DB), run `rg` for the old state type across `src-tauri/src/` before closing. Every consumer must be migrated; the compiler cannot catch a call that still compiles against the old path.
 
 ## Blueprint Manifest
 
 | Blueprint | Purpose |
 |---|---|
 | `blueprints/tauri-command.rs` | Minimal `#[tauri::command]` with serializable error and state access |
+
+## Reference Implementations
+
+- `resources/ipc-chain-reference.md` — **the complete 5-step IPC chain** (commands.rs → lib.rs macros → bindings.ts → lib/tauri/foo.ts → +page.svelte), with canonical examples and rules for each step. Include this in every executor brief that adds a Tauri command.
 
 ## Cross-References
 

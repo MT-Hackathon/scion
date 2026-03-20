@@ -71,7 +71,23 @@ Use this convention for actionable, self-sufficient todos:
 
 ## Todo Granularity
 
-Match todo granularity to agent capability. The Executor handles feature-level multi-file work — use feature-level todos, not function-level, unless concurrency or fresh eyes justify finer decomposition.
+Brief scope is governed by **decision density**, not file count. A well-scoped brief can touch 2–5 files if they share a single coherent concern and all design decisions are resolved before the brief is written. A poorly scoped brief fails because it leaves architectural choices open for the executor to invent — not because it covers too many files.
+
+**The constraint**: An executor agent implements specified patterns cleanly. It struggles when the brief asks it to choose patterns, invent connections, or resolve trade-offs. If an architectural decision remains open inside the brief, it belongs in the orchestrator's planning phase, not the executor's execution.
+
+**A brief is well-scoped when**:
+- Single coherent concern across however many files it touches ("add these three Tauri commands plus their frontend wrappers and registration" is one concern across four files)
+- Behavioral contract fully specified: function signatures, inputs, outputs, error conditions, integration points
+- At least one "follow the exact pattern from X at line Y" anchor — the executor applies a pattern, not invents one
+- Verification is obvious from the contract; the executor knows when it's done
+
+**A brief is too wide when**:
+- Multiple unresolved behavioral questions remain ("figure out how this should work")
+- The executor must discover how components connect rather than being told
+- Different files represent genuinely different concerns requiring separate judgment
+- The executor would need to make a trade-off that the orchestrator should make
+
+**Don't overcorrect to single-file**: Forcing one-file briefs moves chunking overhead into the orchestrator's context window and creates unnecessary prompt churn. Multi-file briefs are correct when the concern is unified and the contracts are tight. Minimize decision density, not file count.
 
 ## Resources
 

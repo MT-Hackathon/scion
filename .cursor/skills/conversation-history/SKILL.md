@@ -52,7 +52,7 @@ At the end of substantive sessions, these scripts support the foundational LEARN
 
 ## Script Reference
 
-All scripts: `uv run .cursor/skills/conversation-history/scripts/<script> [args]`
+All scripts: `uv run .cursor/skills/conversation-history/scripts/check-last-chat.py [args]` (or other scripts — see sections below)
 
 ### check-last-chat.py
 Print the most recent Cursor conversation for a project.

@@ -58,7 +58,26 @@ This skill covers core Rust: ownership, lifetimes, traits, error handling, testi
 - Add `.context("what the operation was trying to do")` at every `?` propagation site that crosses a significant abstraction boundary.
 - `expect("invariant: <reason>")` is the only acceptable panic form; the message must state the invariant, not the operation.
 - Never swallow errors with `let _ = result;` in production paths — log, propagate, or convert to a typed failure.
+- **Never memoize failure in `OnceLock<Option<T>>`**: A `None` stored in `OnceLock` makes retry impossible for the entire process lifetime. For fallible initialization: use `RwLock<Option<T>>` + `AtomicBool` (permanent failure flag) to allow bounded retry. The embedding pipeline was silently dead for six versions because `OnceLock<Option<Arc<TextEmbedding>>>` cached a `None` from a transient DLL load failure — every subsequent call saw the cached `None` and returned immediately. Silent degradation is more dangerous than loud failure; when a subsystem init fails, the failure must be observable (health indicator, startup log, advisory), not swallowed into an `Option::None` that looks like "not configured."
 - IPC-facing errors (Tauri commands, CLI exit codes) require serialization; the serialization adapter belongs in the framework layer, not in the domain error type.
+
+## Input Validation Contract
+
+When Rust code bridges configurable user input to external process execution (subprocess launch, file selection, protocol dispatch), apply the **reject-unless-in-allowlist** pattern at the boundary:
+
+```rust
+const ALLOWED: &[&str] = &["eslint", "biome"];
+if let Some(tool) = params.get("tool").and_then(|v| v.as_str()) {
+    if !ALLOWED.contains(&tool) {
+        errors.push(format!("tool '{}' is not supported; allowed: {}", tool, ALLOWED.join(", ")));
+    }
+}
+```
+
+- **The program name must be a compile-time constant** — user config selects and parameterizes from compiled-in options; it never supplies the executable itself.
+- **Directory is safer than path**: if users need to point at a tool not on PATH, accept the containing *directory* (`tool_dir`) and append the hardwired program name — the binary identity stays in Rust code, only the search path is configurable.
+- **Validation at save time, not execution time**: validate at the configuration persistence boundary (`set_quality_gates`, CLI arg parsing, etc.) so invalid configs are rejected before they reach any execution path.
+- A `validate_params` method returning `Ok(())` at an execution boundary is not a placeholder — it is an unfenced execution path. Compile-time stub implementations are worse than build errors because they ship silently.
 
 ## Testing Strategy Contract
 
@@ -78,7 +97,10 @@ This skill covers core Rust: ownership, lifetimes, traits, error handling, testi
 |------|----------|-------------|
 | Fast loop | `cargo check --workspace` | After every non-trivial edit |
 | Pre-handoff | `cargo fmt --all -- --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace` | Before any agent handoff or PR |
+| Release gate | `cargo build --release --workspace` | Before any promote or release tag |
 | CI hardening | `cargo llvm-cov --workspace`, `cargo deny check`, `cargo machete` | Full CI run; gate on coverage delta, license compliance, unused deps |
+
+**Release-profile lint gap**: `#[cfg(debug_assertions)]`-gated code (debug helpers, test-only variants) compiles out in release builds. An enum variant used only inside a `#[cfg(debug_assertions)]` function but declared without the same gate produces `dead_code` warnings in release that are invisible to `cargo clippy` (which runs in debug profile). The release gate catches these — run it before any promote or tag.
 
 ## QA Protocol for Rust
 
@@ -117,6 +139,9 @@ QA has fix authority for qualitative violations. If fixes are made, the static g
 - If `.clone()` calls are accumulating to silence errors, the mental model of ownership is wrong — stop and redesign the data flow.
 - `cargo clippy` surfaces correctness and performance patterns the compiler does not flag (`clippy::unwrap_used`, `clippy::expect_used`, iterator inefficiencies) — run it before any code review.
 - **Serde flat-vs-nested silent failure**: When deserializing JSON that has a nested structure (common when porting from Python dataclasses), flat serde field names succeed against a nested JSON tree but produce default/zero-value fields rather than a parse error. Symptom: valid JSON produces empty fields after deserialization. Diagnostic: read the actual `load_*` function's navigation path through the JSON tree — that path is the wire format, not the struct field names. Fix: either mirror the nesting in Rust with intermediate structs, or parse manually via `serde_json::Value` with explicit field extraction.
+- **Cache key scoping**: Cache tables that store file-path-keyed data must include `workspace_root` in the key — `path TEXT PK` collides between repos in any multi-workspace-capable DB. Add a `cache_version INTEGER` column for schema evolution so format changes invalidate stale-but-valid-looking rows.
+- **Split invalidation semantics**: When a cache combines data from different sources, each source needs its own invalidation signal. Git stats (from `git log`) are commit-scoped — HEAD pointer is the correct invalidation signal. Parse results (from file reads + tree-sitter) are working-tree scoped — file mtime/size is the correct signal. Conflating them into a single "rebuild everything" trigger wastes work or serves stale data.
+- **`Path::ends_with` matches components, not filename suffixes**: `path.ends_with("SKILL.md")` returns `false` for `/path/to/skills/rust-development/SKILL.md` because `Path::ends_with` compares path *components* from the right — not string suffixes. For a 4-element path, the single-component `"SKILL.md"` only matches if the path IS `"SKILL.md"`. The silent failure: a file walker filtering with `ends_with("SKILL.md")` finds zero files and continues without error. Correct pattern: `path.file_name() == Some(OsStr::new("SKILL.md"))`. On Windows, backslash separators can interact with this differently than Unix forward slashes — test cross-platform.
 - Runtime diagnostics: instrument with `tracing` (structured spans and events), not `println!`; `println!` is acceptable only for intentional CLI output.
 - Cross-reference: [testing-debugging](../testing-debugging/SKILL.md) for the universal two-attempt rule and diagnostic order protocol.
 
